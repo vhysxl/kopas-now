@@ -1,28 +1,24 @@
-import { createClient } from "@/utils/supabase/server";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+"use client";
+
+import { useUserStore } from "@/store/useUserStore";
 import { signOutAction } from "@/server/actions/auth";
 
-export default async function Home() {
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
+export default function Home() {
+  const user = useUserStore((state) => state.user);
+  const customer = useUserStore((state) => state.customer);
+  const isLoading = useUserStore((state) => state.isLoading);
 
-  // Retrieve authenticated user
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  // Redirect to login if user is not authenticated
-  if (!user) {
-    redirect("/auth");
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#CE1126]"></div>
+      </div>
+    );
   }
 
-  // Query customer details from kopasnow_customers
-  const { data: customer } = await supabase
-    .from("kopasnow_customers")
-    .select("*")
-    .eq("user_id", user.id)
-    .maybeSingle();
+  if (!user) {
+    return null; // Middleware will handle redirecting to /auth
+  }
 
   const nama = customer?.nama || user.user_metadata?.nama || "Anggota Koperasi";
   const email = customer?.email || user.email || "-";
