@@ -1,65 +1,153 @@
-import Image from "next/image";
+import { createClient } from "@/utils/supabase/server";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { signOutAction } from "@/server/actions/auth";
 
-export default function Home() {
+export default async function Home() {
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+
+  // Retrieve authenticated user
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // Redirect to login if user is not authenticated
+  if (!user) {
+    redirect("/auth");
+  }
+
+  // Query customer details from kopasnow_customers
+  const { data: customer } = await supabase
+    .from("kopasnow_customers")
+    .select("*")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const nama = customer?.nama || user.user_metadata?.nama || "Anggota Koperasi";
+  const email = customer?.email || user.email || "-";
+  const phone = customer?.phone || user.user_metadata?.phone || "-";
+  const joinedDate = customer?.created_at
+    ? new Date(customer.created_at).toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      })
+    : "Baru saja bergabung";
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="min-h-screen bg-slate-50 font-sans selection:bg-red-500 selection:text-white flex flex-col">
+      {/* Navbar / Header */}
+      <header className="bg-white border-b border-slate-100 shadow-sm sticky top-0 z-50">
+        <div className="w-full h-1 flex">
+          <div className="flex-1 bg-[#CE1126]" />
+          <div className="flex-1 bg-white" />
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#CE1126] to-[#A50E1E] flex items-center justify-center text-white shadow-md shadow-red-500/10">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={2}
+                stroke="currentColor"
+                className="w-5 h-5"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z"
+                />
+              </svg>
+            </div>
+            <span className="font-bold text-lg text-slate-800 tracking-tight">
+              Kopas<span className="text-[#CE1126]">Now</span>
+            </span>
+          </div>
+
+          <form action={signOutAction}>
+            <button
+              type="submit"
+              className="px-4 py-2 text-xs font-semibold text-red-600 hover:text-white border border-red-200 hover:bg-[#CE1126] hover:border-[#CE1126] rounded-xl transition-all duration-200 cursor-pointer"
+            >
+              Keluar
+            </button>
+          </form>
+        </div>
+      </header>
+
+      {/* Main Content Area */}
+      <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-12 flex flex-col justify-center">
+        {/* Welcome Card */}
+        <div className="bg-white rounded-3xl shadow-xl shadow-slate-100 border border-slate-100 overflow-hidden">
+          <div className="p-8 sm:p-12 text-center max-w-2xl mx-auto">
+            {/* User Avatar Circle */}
+            <div className="w-20 h-20 rounded-full bg-red-50 text-[#CE1126] flex items-center justify-center mx-auto mb-6 border border-red-100 shadow-inner">
+              <span className="text-2xl font-bold uppercase tracking-wider">
+                {nama.charAt(0)}
+              </span>
+            </div>
+
+            <h2 className="text-3xl font-extrabold text-slate-800 tracking-tight">
+              Selamat Datang, <span className="text-[#CE1126]">{nama}</span>!
+            </h2>
+            <p className="text-slate-500 mt-2 text-sm sm:text-base">
+              Terima kasih telah menjadi bagian dari Koperasi Merah Putih KopasNow. Akun Anda telah
+              terverifikasi secara digital di platform kami.
+            </p>
+
+            <div className="w-16 h-1 bg-[#CE1126] rounded-full mx-auto my-8" />
+
+            {/* Profile Info Details Grid */}
+            <div className="bg-slate-50 rounded-2xl p-6 text-left border border-slate-100 space-y-4">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-200/60 pb-2">
+                Informasi Keanggotaan
+              </h3>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-0.5">
+                  <span className="text-xs text-slate-400 block font-medium">Nama Anggota</span>
+                  <span className="text-sm font-semibold text-slate-800">{nama}</span>
+                </div>
+                
+                <div className="space-y-0.5">
+                  <span className="text-xs text-slate-400 block font-medium">Status</span>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    Aktif
+                  </span>
+                </div>
+
+                <div className="space-y-0.5">
+                  <span className="text-xs text-slate-400 block font-medium">Email</span>
+                  <span className="text-sm font-semibold text-slate-800 break-all">{email}</span>
+                </div>
+
+                <div className="space-y-0.5">
+                  <span className="text-xs text-slate-400 block font-medium">No. Telepon / HP</span>
+                  <span className="text-sm font-semibold text-slate-800">{phone}</span>
+                </div>
+
+                <div className="space-y-0.5 sm:col-span-2">
+                  <span className="text-xs text-slate-400 block font-medium">Tanggal Bergabung</span>
+                  <span className="text-sm font-semibold text-slate-800">{joinedDate}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Platform Shortcuts Info */}
+            <div className="mt-8 text-xs text-slate-400 font-medium">
+              Sistem Core Koperasi ID: <span className="font-mono text-slate-500">{user.id}</span>
+            </div>
+          </div>
         </div>
       </main>
+
+      {/* Footer */}
+      <footer className="py-6 border-t border-slate-100 text-center text-xs text-slate-400 bg-white">
+        &copy; 2026 KopasNow. Hak Cipta Dilindungi Undang-Undang.
+      </footer>
     </div>
   );
 }
