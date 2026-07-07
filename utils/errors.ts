@@ -18,28 +18,33 @@ export const ERROR_MESSAGES = {
  * Mask raw database or network errors to prevent leaking stack traces or technical details.
  * Logs the actual error internally to the server console, but returns a clean, safe message.
  */
-export function maskError(error: any, fallbackMessage: string = ERROR_MESSAGES.SYSTEM_ERROR): string {
+export function maskError(error: unknown, fallbackMessage: string = ERROR_MESSAGES.SYSTEM_ERROR): string {
   if (!error) {
     return fallbackMessage;
   }
 
+  const errObj = error as Record<string, unknown> & { message?: string; code?: string; details?: string; hint?: string; stack?: string };
+
   // Log the actual error internally with full detail for developer debugging
   console.error("[INTERNAL AUTH ERROR DETECTED]:", {
-    message: error.message || error,
-    code: error.code || null,
-    details: error.details || null,
-    hint: error.hint || null,
-    stack: error.stack || null,
+    message: errObj.message || String(error),
+    code: errObj.code || null,
+    details: errObj.details || null,
+    hint: errObj.hint || null,
+    stack: errObj.stack || null,
   });
 
   // Handle Postgres RLS policy violations (Code 42501)
-  if (error.code === "42501" || (error.message && error.message.toLowerCase().includes("row-level security"))) {
+  if (errObj.code === "42501" || (errObj.message && errObj.message.toLowerCase().includes("row-level security"))) {
     return ERROR_MESSAGES.RLS_VIOLATION;
   }
 
   // Handle Supabase Auth / Rate limits / Invalid credentials
-  if (error.message) {
-    const msg = error.message.toLowerCase();
+  if (errObj.message) {
+    const msg = errObj.message.toLowerCase();
+    if (msg.includes("fetch") || msg.includes("network") || msg.includes("connect") || msg.includes("timeout")) {
+      return ERROR_MESSAGES.SYSTEM_ERROR;
+    }
     if (msg.includes("rate limit")) {
       return ERROR_MESSAGES.RATE_LIMIT_EXCEEDED;
     }

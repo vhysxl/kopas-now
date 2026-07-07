@@ -21,9 +21,10 @@ export async function signUpAction(
   const nama = formData.get("nama") as string;
   const identifier = formData.get("identifier") as string;
   const password = formData.get("password") as string;
+  const confirmPassword = formData.get("confirmPassword") as string;
 
   // Validate using Valibot
-  const result = v.safeParse(SignUpSchema, { nama, identifier, password });
+  const result = v.safeParse(SignUpSchema, { nama, identifier, password, confirmPassword });
   if (!result.success) {
     return { error: result.issues[0].message };
   }

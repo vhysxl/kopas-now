@@ -16,13 +16,13 @@ export default function AuthProvider({
   initialUser,
   initialCustomer,
 }: AuthProviderProps) {
-  const initialized = useRef(false);
+  const initialized = useRef<boolean | null>(null);
   const setUser = useUserStore((state) => state.setUser);
   const setCustomer = useUserStore((state) => state.setCustomer);
   const setLoading = useUserStore((state) => state.setLoading);
 
   // Initialize store with server-side fetched values
-  if (!initialized.current) {
+  if (initialized.current == null) {
     useUserStore.setState({
       user: initialUser,
       customer: initialCustomer,

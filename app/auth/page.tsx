@@ -16,6 +16,16 @@ export default function AuthPage() {
     setSuccess("");
 
     const formData = new FormData(e.currentTarget);
+    if (!isLogin) {
+      const password = formData.get("password") as string;
+      const confirmPassword = formData.get("confirmPassword") as string;
+      if (password !== confirmPassword) {
+        setError("Password dan Konfirmasi Password tidak cocok.");
+        setLoading(false);
+        return;
+      }
+    }
+
     try {
       const res = isLogin
         ? await signInAction(null, formData)
@@ -35,8 +45,13 @@ export default function AuthPage() {
           window.location.href = "/";
         }, 1200);
       }
-    } catch (err: any) {
-      setError(err?.message || "Terjadi kesalahan sistem. Silakan coba lagi.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg.toLowerCase().includes("failed to fetch") || msg.toLowerCase().includes("network error") || msg.toLowerCase().includes("fetch failed")) {
+        setError("Gagal terhubung ke server. Periksa koneksi internet Anda atau coba lagi nanti.");
+      } else {
+        setError("Terjadi kesalahan sistem. Silakan coba lagi nanti.");
+      }
     } finally {
       setLoading(false);
     }
@@ -274,6 +289,40 @@ export default function AuthPage() {
                 />
               </div>
             </div>
+
+            {/* Confirm Password field (Only shown during Register) */}
+            {!isLogin && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Konfirmasi Password
+                </label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 pointer-events-none">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                      className="w-5 h-5"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"
+                      />
+                    </svg>
+                  </span>
+                  <input
+                    type="password"
+                    name="confirmPassword"
+                    placeholder="••••••••"
+                    required={!isLogin}
+                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 focus:border-[#CE1126] focus:ring-2 focus:ring-red-100 rounded-2xl text-slate-800 text-sm placeholder-slate-400 outline-none transition-all"
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Submit Button */}
             <button
