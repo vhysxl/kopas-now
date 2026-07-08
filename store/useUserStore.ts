@@ -6,7 +6,7 @@ export interface Customer {
   user_id: string;
   nama: string;
   email: string | null;
-  phone: string;
+  phone: string | null;
   created_at?: string;
   updated_at?: string;
 }
