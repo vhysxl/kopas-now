@@ -21,7 +21,7 @@
 /build
 
 # branch mastah worktree
-/branch-master
+.worktree/branch-master
 
 # misc
 .DS_Store
