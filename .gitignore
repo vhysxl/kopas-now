@@ -22,6 +22,7 @@
 
 # branch mastah worktree
 .worktree/branch-master
+.worktree/branch-gis
 
 # misc
 .DS_Store

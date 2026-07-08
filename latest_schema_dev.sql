@@ -64,12 +64,63 @@ CREATE TABLE IF NOT EXISTS "public"."kopasnow_customers" (
     "user_id" "uuid",
     "nama" "text",
     "email" "text",
-    "phone" "text" NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+    "phone" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "check_email_or_phone_present" CHECK (((("email" IS NOT NULL) AND ("email" <> ''::"text")) OR (("phone" IS NOT NULL) AND ("phone" <> ''::"text"))))
 );
 
 
 ALTER TABLE "public"."kopasnow_customers" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."kopasnow_koperasi" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "nama" "text" NOT NULL,
+    "kode_koperasi" "text" NOT NULL,
+    "lokasi" "extensions"."geography"(Point,4326) NOT NULL,
+    "alamat" "text",
+    "admin_phone" "text",
+    "status" "text" DEFAULT 'active'::"text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "kopasnow_koperasi_status_check" CHECK (("status" = ANY (ARRAY['active'::"text", 'inactive'::"text", 'suspended'::"text"])))
+);
+
+
+ALTER TABLE "public"."kopasnow_koperasi" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."kopasnow_products" (
+    "id_produk" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "koperasi_id" "uuid" NOT NULL,
+    "nama_produk" "text" NOT NULL,
+    "deskripsi_produk" "text",
+    "harga_produk" numeric(12,2) NOT NULL,
+    "satuan_produk" "text" DEFAULT 'pcs'::"text",
+    "stok_tersedia" integer DEFAULT 0 NOT NULL,
+    "stok_reserved" integer DEFAULT 0 NOT NULL,
+    "foto_url" "text",
+    "is_active" boolean DEFAULT true NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "kopasnow_products_harga_produk_check" CHECK (("harga_produk" >= (0)::numeric)),
+    CONSTRAINT "kopasnow_products_stok_reserved_check" CHECK (("stok_reserved" >= 0)),
+    CONSTRAINT "kopasnow_products_stok_tersedia_check" CHECK (("stok_tersedia" >= 0))
+);
+
+
+ALTER TABLE "public"."kopasnow_products" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."kopasnow_staff" (
+    "id_staff" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "koperasi_id" "uuid" NOT NULL,
+    "nama_staff" character varying NOT NULL,
+    "role" character varying,
+    "nomor_telepon" "text" NOT NULL
+);
+
+
+ALTER TABLE "public"."kopasnow_staff" OWNER TO "postgres";
 
 
 ALTER TABLE ONLY "public"."kopasnow_customers"
@@ -82,6 +133,26 @@ ALTER TABLE ONLY "public"."kopasnow_customers"
 
 
 
+ALTER TABLE ONLY "public"."kopasnow_koperasi"
+    ADD CONSTRAINT "kopasnow_koperasi_kode_koperasi_key" UNIQUE ("kode_koperasi");
+
+
+
+ALTER TABLE ONLY "public"."kopasnow_koperasi"
+    ADD CONSTRAINT "kopasnow_koperasi_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."kopasnow_products"
+    ADD CONSTRAINT "kopasnow_products_pkey" PRIMARY KEY ("id_produk");
+
+
+
+ALTER TABLE ONLY "public"."kopasnow_staff"
+    ADD CONSTRAINT "kopasnow_staff_pkey" PRIMARY KEY ("id_staff");
+
+
+
 CREATE UNIQUE INDEX "idx_customers_email" ON "public"."kopasnow_customers" USING "btree" ("email") WHERE ("email" IS NOT NULL);
 
 
@@ -90,8 +161,26 @@ CREATE UNIQUE INDEX "idx_customers_phone" ON "public"."kopasnow_customers" USING
 
 
 
+CREATE INDEX "idx_kopasnow_products_koperasi" ON "public"."kopasnow_products" USING "btree" ("koperasi_id");
+
+
+
+CREATE INDEX "idx_koperasi_lokasi" ON "public"."kopasnow_koperasi" USING "gist" ("lokasi");
+
+
+
 ALTER TABLE ONLY "public"."kopasnow_customers"
     ADD CONSTRAINT "kopasnow_customers_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."kopasnow_products"
+    ADD CONSTRAINT "kopasnow_products_koperasi_id_fkey" FOREIGN KEY ("koperasi_id") REFERENCES "public"."kopasnow_koperasi"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."kopasnow_staff"
+    ADD CONSTRAINT "kopasnow_staff_koperasi_id_fkey" FOREIGN KEY ("koperasi_id") REFERENCES "public"."kopasnow_koperasi"("id");
 
 
 
@@ -100,6 +189,23 @@ CREATE POLICY "Allow users to insert their own profile" ON "public"."kopasnow_cu
 
 
 ALTER TABLE "public"."kopasnow_customers" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."kopasnow_koperasi" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "kopasnow_koperasi_public_select" ON "public"."kopasnow_koperasi" FOR SELECT USING (true);
+
+
+
+ALTER TABLE "public"."kopasnow_products" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "kopasnow_products_public_select" ON "public"."kopasnow_products" FOR SELECT USING (true);
+
+
+
+ALTER TABLE "public"."kopasnow_staff" ENABLE ROW LEVEL SECURITY;
 
 
 GRANT USAGE ON SCHEMA "public" TO "postgres";
@@ -118,6 +224,24 @@ GRANT ALL ON FUNCTION "public"."rls_auto_enable"() TO "service_role";
 GRANT ALL ON TABLE "public"."kopasnow_customers" TO "anon";
 GRANT ALL ON TABLE "public"."kopasnow_customers" TO "authenticated";
 GRANT ALL ON TABLE "public"."kopasnow_customers" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."kopasnow_koperasi" TO "anon";
+GRANT ALL ON TABLE "public"."kopasnow_koperasi" TO "authenticated";
+GRANT ALL ON TABLE "public"."kopasnow_koperasi" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."kopasnow_products" TO "anon";
+GRANT ALL ON TABLE "public"."kopasnow_products" TO "authenticated";
+GRANT ALL ON TABLE "public"."kopasnow_products" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."kopasnow_staff" TO "anon";
+GRANT ALL ON TABLE "public"."kopasnow_staff" TO "authenticated";
+GRANT ALL ON TABLE "public"."kopasnow_staff" TO "service_role";
 
 
 
