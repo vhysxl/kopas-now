@@ -20,6 +20,9 @@
 # production
 /build
 
+# branch mastah worktree
+/branch-master
+
 # misc
 .DS_Store
 *.pem
