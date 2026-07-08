@@ -39,8 +39,7 @@ export default function AuthPage() {
             ? "Login berhasil! Sedang mengalihkan..."
             : "Registrasi berhasil! Profil Anda telah dibuat. Sedang mengalihkan..."
         );
-        // Page redirect will be initiated by the Server Action,
-        // but we add a fallback redirect just in case
+        // Redirect after a brief delay
         setTimeout(() => {
           window.location.href = "/";
         }, 1200);
@@ -58,32 +57,27 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-radial from-red-50/40 via-slate-50 to-slate-100 p-4 font-sans selection:bg-red-500 selection:text-white">
-      {/* Background Decorative Circles */}
-      <div className="absolute top-12 left-12 w-64 h-64 bg-red-200/20 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-12 right-12 w-96 h-96 bg-red-300/10 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen flex items-center justify-center bg-[#F6F6F6] p-4 font-sans selection:bg-[#06C167] selection:text-white relative">
+      {/* Visual top branding bar */}
+      <div className="w-full h-1 flex fixed top-0 left-0 z-50">
+        <div className="w-1/3 bg-[#CE1126]" />
+        <div className="w-1/3 bg-white" />
+        <div className="w-1/3 bg-[#06C167]" />
+      </div>
 
-      {/* Main Container */}
-      <div className="relative w-full max-w-md bg-white rounded-3xl shadow-[0_20px_50px_rgba(206,17,38,0.06)] border border-slate-100/80 overflow-hidden backdrop-blur-sm z-10 transition-all duration-300">
-        
-        {/* Flag Stripe (Merah Putih Decor) */}
-        <div className="w-full h-1.5 flex">
-          <div className="flex-1 bg-[#CE1126]" />
-          <div className="flex-1 bg-white border-b border-slate-100" />
-        </div>
-
+      {/* Main Card Container */}
+      <div className="relative w-full max-w-md bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden z-10 transition-all duration-300">
         <div className="p-8 sm:p-10">
           {/* Header */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-[#CE1126] to-[#A50E1E] text-white shadow-lg shadow-red-500/20 mb-4 transform hover:rotate-6 transition-transform duration-300">
-              {/* Cooperative Shield Icon */}
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-black text-[#06C167] shadow-sm mb-4">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
                 viewBox="0 0 24 24"
-                strokeWidth={2}
+                strokeWidth={2.5}
                 stroke="currentColor"
-                className="w-8 h-8"
+                className="w-6 h-6"
               >
                 <path
                   strokeLinecap="round"
@@ -93,26 +87,30 @@ export default function AuthPage() {
               </svg>
             </div>
             
-            <h1 className="text-2xl font-bold tracking-tight text-slate-800">
-              Kopas<span className="text-[#CE1126]">Now</span>
+            <h1 className="text-2xl font-black tracking-tight text-black flex items-center justify-center gap-0.5">
+              <span>Kopas</span>
+              <span className="text-[#06C167]">Now</span>
+              <span className="bg-[#06C167] text-white px-1 py-0.5 rounded-sm font-extrabold text-[8px] uppercase tracking-wider ml-1">
+                Mart
+              </span>
             </h1>
-            <p className="text-sm text-slate-500 mt-1">
-              Koperasi Merah Putih — Layanan Digital Terpercaya
+            <p className="text-xs text-gray-400 mt-2 font-bold uppercase tracking-wider">
+              Layanan Digital Koperasi Merah Putih
             </p>
           </div>
 
-          {/* Tab Selection */}
-          <div className="flex bg-slate-100/80 p-1.5 rounded-2xl mb-8">
+          {/* Switch Tab (Uber style pill selection) */}
+          <div className="flex bg-[#F3F3F3] p-1.5 rounded-full mb-8 border border-gray-100/50">
             <button
               onClick={() => {
                 setIsLogin(true);
                 setError("");
                 setSuccess("");
               }}
-              className={`flex-1 py-2.5 text-sm font-semibold rounded-xl transition-all duration-200 ${
+              className={`flex-1 py-2 text-xs font-black rounded-full transition-all duration-200 cursor-pointer ${
                 isLogin
-                  ? "bg-white text-slate-800 shadow-sm"
-                  : "text-slate-500 hover:text-slate-700"
+                  ? "bg-black text-white shadow-sm"
+                  : "text-gray-500 hover:text-black"
               }`}
             >
               Masuk
@@ -123,25 +121,25 @@ export default function AuthPage() {
                 setError("");
                 setSuccess("");
               }}
-              className={`flex-1 py-2.5 text-sm font-semibold rounded-xl transition-all duration-200 ${
+              className={`flex-1 py-2 text-xs font-black rounded-full transition-all duration-200 cursor-pointer ${
                 !isLogin
-                  ? "bg-white text-slate-800 shadow-sm"
-                  : "text-slate-500 hover:text-slate-700"
+                  ? "bg-black text-white shadow-sm"
+                  : "text-gray-500 hover:text-black"
               }`}
             >
               Daftar
             </button>
           </div>
 
-          {/* Feedback Messages */}
+          {/* Messages */}
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border-l-4 border-[#CE1126] rounded-r-xl flex items-start gap-3 animate-fade-in">
+            <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-r-xl flex items-start gap-3">
               <svg
-                className="w-5 h-5 text-[#CE1126] shrink-0 mt-0.5"
+                className="w-5 h-5 text-red-650 shrink-0 mt-0.5"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
-                strokeWidth={2}
+                strokeWidth={2.5}
               >
                 <path
                   strokeLinecap="round"
@@ -149,18 +147,18 @@ export default function AuthPage() {
                   d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
                 />
               </svg>
-              <span className="text-sm font-medium text-red-800">{error}</span>
+              <span className="text-xs font-bold text-red-900">{error}</span>
             </div>
           )}
 
           {success && (
-            <div className="mb-6 p-4 bg-emerald-50 border-l-4 border-emerald-500 rounded-r-xl flex items-start gap-3 animate-fade-in">
+            <div className="mb-6 p-4 bg-emerald-50 border-l-4 border-[#06C167] rounded-r-xl flex items-start gap-3">
               <svg
-                className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5"
+                className="w-5 h-5 text-[#06C167] shrink-0 mt-0.5"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
-                strokeWidth={2}
+                strokeWidth={2.5}
               >
                 <path
                   strokeLinecap="round"
@@ -168,7 +166,7 @@ export default function AuthPage() {
                   d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
-              <span className="text-sm font-medium text-emerald-800">{success}</span>
+              <span className="text-xs font-bold text-emerald-900">{success}</span>
             </div>
           )}
 
@@ -177,18 +175,18 @@ export default function AuthPage() {
             {/* Full Name field (Only shown during Register) */}
             {!isLogin && (
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                <label className="text-[10px] font-black uppercase tracking-wider text-gray-400">
                   Nama Lengkap
                 </label>
                 <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 pointer-events-none">
+                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-400 pointer-events-none">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"
-                      strokeWidth={1.5}
+                      strokeWidth={2}
                       stroke="currentColor"
-                      className="w-5 h-5"
+                      className="w-4 h-4"
                     >
                       <path
                         strokeLinecap="round"
@@ -200,9 +198,9 @@ export default function AuthPage() {
                   <input
                     type="text"
                     name="nama"
-                    placeholder="Nama Lengkap sesuai KTP"
+                    placeholder="Contoh: Yogi Ferdiansyah"
                     required={!isLogin}
-                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 focus:border-[#CE1126] focus:ring-2 focus:ring-red-100 rounded-2xl text-slate-800 text-sm placeholder-slate-400 outline-none transition-all"
+                    className="w-full pl-10 pr-4 py-2.5 bg-[#F3F3F3] border border-transparent focus:border-black focus:bg-white rounded-xl text-black text-xs font-bold placeholder-gray-400 outline-none transition-all"
                   />
                 </div>
               </div>
@@ -210,18 +208,18 @@ export default function AuthPage() {
 
             {/* Email or Phone field */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Email atau Nomor HP
+              <label className="text-[10px] font-black uppercase tracking-wider text-gray-400">
+                Surel (Email) atau No. Handphone
               </label>
               <div className="relative">
-                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 pointer-events-none">
+                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-400 pointer-events-none">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
-                    strokeWidth={1.5}
+                    strokeWidth={2}
                     stroke="currentColor"
-                    className="w-5 h-5"
+                    className="w-4 h-4"
                   >
                     <path
                       strokeLinecap="round"
@@ -236,10 +234,10 @@ export default function AuthPage() {
                   placeholder={
                     isLogin
                       ? "contoh@email.com atau 0812xxxxxxxx"
-                      : "Masukkan email atau nomor HP aktif"
+                      : "Surel atau No. HP aktif Anda"
                   }
                   required
-                  className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 focus:border-[#CE1126] focus:ring-2 focus:ring-red-100 rounded-2xl text-slate-800 text-sm placeholder-slate-400 outline-none transition-all"
+                  className="w-full pl-10 pr-4 py-2.5 bg-[#F3F3F3] border border-transparent focus:border-black focus:bg-white rounded-xl text-black text-xs font-bold placeholder-gray-400 outline-none transition-all"
                 />
               </div>
             </div>
@@ -247,31 +245,31 @@ export default function AuthPage() {
             {/* Password field */}
             <div className="space-y-1.5">
               <div className="flex justify-between items-center">
-                <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Password
+                <label className="text-[10px] font-black uppercase tracking-wider text-gray-400">
+                  Kata Sandi (Password)
                 </label>
                 {isLogin && (
                   <a
                     href="#"
-                    className="text-xs font-medium text-[#CE1126] hover:text-[#A50E1E] hover:underline"
+                    className="text-[10px] font-extrabold text-[#06C167] hover:text-emerald-700 hover:underline"
                     onClick={(e) => {
                       e.preventDefault();
-                      alert("Silakan hubungi admin koperasi untuk mereset password Anda.");
+                      alert("Silakan hubungi pengurus koperasi desa untuk mereset kata sandi Anda.");
                     }}
                   >
-                    Lupa Password?
+                    Lupa Sandi?
                   </a>
                 )}
               </div>
               <div className="relative">
-                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 pointer-events-none">
+                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-400 pointer-events-none">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
-                    strokeWidth={1.5}
+                    strokeWidth={2}
                     stroke="currentColor"
-                    className="w-5 h-5"
+                    className="w-4 h-4"
                   >
                     <path
                       strokeLinecap="round"
@@ -285,7 +283,7 @@ export default function AuthPage() {
                   name="password"
                   placeholder="••••••••"
                   required
-                  className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 focus:border-[#CE1126] focus:ring-2 focus:ring-red-100 rounded-2xl text-slate-800 text-sm placeholder-slate-400 outline-none transition-all"
+                  className="w-full pl-10 pr-4 py-2.5 bg-[#F3F3F3] border border-transparent focus:border-black focus:bg-white rounded-xl text-black text-xs font-bold placeholder-gray-400 outline-none transition-all"
                 />
               </div>
             </div>
@@ -293,18 +291,18 @@ export default function AuthPage() {
             {/* Confirm Password field (Only shown during Register) */}
             {!isLogin && (
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Konfirmasi Password
+                <label className="text-[10px] font-black uppercase tracking-wider text-gray-400">
+                  Konfirmasi Kata Sandi
                 </label>
                 <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 pointer-events-none">
+                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-400 pointer-events-none">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"
-                      strokeWidth={1.5}
+                      strokeWidth={2}
                       stroke="currentColor"
-                      className="w-5 h-5"
+                      className="w-4 h-4"
                     >
                       <path
                         strokeLinecap="round"
@@ -318,7 +316,7 @@ export default function AuthPage() {
                     name="confirmPassword"
                     placeholder="••••••••"
                     required={!isLogin}
-                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 focus:border-[#CE1126] focus:ring-2 focus:ring-red-100 rounded-2xl text-slate-800 text-sm placeholder-slate-400 outline-none transition-all"
+                    className="w-full pl-10 pr-4 py-2.5 bg-[#F3F3F3] border border-transparent focus:border-black focus:bg-white rounded-xl text-black text-xs font-bold placeholder-gray-400 outline-none transition-all"
                   />
                 </div>
               </div>
@@ -328,12 +326,12 @@ export default function AuthPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-4 bg-gradient-to-r from-[#CE1126] to-[#A50E1E] text-white py-3.5 px-4 font-semibold text-sm rounded-2xl hover:shadow-lg hover:shadow-red-500/20 active:scale-[0.98] disabled:opacity-75 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full mt-4 bg-black hover:bg-neutral-800 text-white py-3.5 px-4 font-bold text-xs rounded-full shadow-sm active:scale-[0.98] disabled:opacity-75 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer"
             >
               {loading ? (
                 <>
                   <svg
-                    className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                    className="animate-spin -ml-1 mr-3 h-4 w-4 text-white"
                     fill="none"
                     viewBox="0 0 24 24"
                   >
@@ -356,16 +354,16 @@ export default function AuthPage() {
               ) : isLogin ? (
                 "Masuk ke Akun Koperasi"
               ) : (
-                "Daftar Anggota Koperasi"
+                "Daftar Anggota Baru"
               )}
             </button>
           </form>
 
           {/* Footer Info */}
-          <div className="mt-8 text-center border-t border-slate-100 pt-6">
-            <p className="text-xs text-slate-400">
-              Dengan masuk atau mendaftar, Anda menyetujui Ketentuan Layanan dan Kebijakan Privasi
-              KopasNow Indonesia.
+          <div className="mt-8 text-center border-t border-gray-100 pt-6">
+            <p className="text-[10px] text-gray-400 leading-normal font-medium">
+              Dengan masuk atau mendaftar, Anda menyetujui Ketentuan Layanan &amp; Kebijakan Privasi
+              KopasNow Mart.
             </p>
           </div>
         </div>
