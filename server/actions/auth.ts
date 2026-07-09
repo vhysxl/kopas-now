@@ -1,12 +1,14 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { createAdminClient } from "@/utils/supabase/admin";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { ERROR_MESSAGES, maskError } from "@/utils/errors";
 import { normalizePhone } from "@/utils/helper/normalizePhone";
 import * as v from "valibot";
 import { SignUpSchema, SignInSchema } from "@/utils/validation/auth";
+import { sendOTPWhatsApp } from "@/utils/fonnte/whatsapp";
 
 export type ActionResponse = {
   error?: string;
@@ -169,4 +171,214 @@ export async function signOutAction(): Promise<void> {
   const supabase = createClient(cookieStore);
   await supabase.auth.signOut();
   redirect("/auth");
+}
+
+/**
+ * Generate a 6-digit OTP code
+ */
+function generateOTP(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+/**
+ * Request OTP for password reset
+ */
+export async function requestPasswordResetOTP(
+  prevState: ActionResponse | null,
+  formData: FormData
+): Promise<ActionResponse> {
+  const identifier = formData.get("identifier") as string;
+
+  if (!identifier || identifier.trim() === "") {
+    return { error: "Nomor telepon wajib diisi" };
+  }
+
+  // Only support phone number for OTP via WhatsApp
+  if (identifier.includes("@")) {
+    return { error: "Reset password via OTP hanya tersedia untuk nomor telepon" };
+  }
+
+  const normalizedPhone = normalizePhone(identifier);
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+
+  // Check if phone exists in kopasnow_customers
+  const { data: customer, error: dbError } = await supabase
+    .from("kopasnow_customers")
+.select("*")
+    .eq("phone", normalizedPhone)
+    .maybeSingle();
+
+  if (dbError) {
+    return { error: maskError(dbError) };
+  }
+
+  if (!customer) {
+    return { error: ERROR_MESSAGES.PHONE_NOT_REGISTERED };
+  }
+
+  // Generate OTP
+const otpCode = generateOTP();
+  const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes from now
+
+  // Save OTP to database
+  const { error: insertError } = await supabase.from("kopasnow_otp").insert({
+    phone: normalizedPhone,
+    otp_code: otpCode,
+    purpose: "password_reset",
+    expires_at: expiresAt.toISOString(),
+  });
+
+  if (insertError) {
+    return { error: maskError(insertError, "Gagal membuat OTP. Silakan coba lagi.") };
+  }
+
+  // Send OTP via WhatsApp
+  try {
+    await sendOTPWhatsApp(normalizedPhone, otpCode);
+    return {
+      success: true,
+      message: "Kode OTP telah dikirim ke WhatsApp Anda",
+    };
+  } catch (error) {
+    console.error("Failed to send OTP via WhatsApp:", error);
+    return {
+      error: "Gagal mengirim OTP via WhatsApp. Silakan coba lagi.",
+    };
+  }
+}
+
+/**
+ * Verify OTP code
+ */
+export async function verifyOTP(
+  prevState: ActionResponse | null,
+  formData: FormData
+): Promise<ActionResponse> {
+  const identifier = formData.get("identifier") as string;
+  const otpCode = formData.get("otp") as string;
+
+  if (!identifier || !otpCode) {
+    return { error: "Nomor telepon dan kode OTP wajib diisi" };
+  }
+
+  const normalizedPhone = normalizePhone(identifier);
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+
+  // Find valid OTP
+  const { data: otpRecord, error: otpError } = await supabase
+    .from("kopasnow_otp")
+    .select("*")
+    .eq("phone", normalizedPhone)
+    .eq("otp_code", otpCode)
+  .eq("purpose", "password_reset")
+    .eq("is_used", false)
+    .gt("expires_at", new Date().toISOString())
+  .order("created_at", { ascending: false })
+ .maybeSingle();
+
+  if (otpError) {
+    return { error: maskError(otpError) };
+  }
+
+  if (!otpRecord) {
+    return { error: "Kode OTP tidak valid atau sudah kadaluarsa" };
+  }
+
+  // Mark OTP as used
+  const { error: updateError } = await supabase
+    .from("kopasnow_otp")
+  .update({ is_used: true })
+    .eq("id", otpRecord.id);
+
+  if (updateError) {
+    return { error: maskError(updateError) };
+  }
+
+  return {
+    success: true,
+    message: "OTP berhasil diverifikasi",
+  };
+}
+
+/**
+ * Reset password after OTP verification
+ */
+export async function resetPassword(
+  prevState: ActionResponse | null,
+  formData: FormData
+): Promise<ActionResponse> {
+  const identifier = formData.get("identifier") as string;
+  const otpCode = formData.get("otp") as string;
+  const newPassword = formData.get("newPassword") as string;
+  const confirmPassword = formData.get("confirmPassword") as string;
+
+  if (!identifier || !otpCode || !newPassword || !confirmPassword) {
+    return { error: "Semua field wajib diisi" };
+  }
+
+  if (newPassword !== confirmPassword) {
+  return { error: "Password dan konfirmasi password tidak cocok" };
+  }
+
+  if (newPassword.length < 6) {
+    return { error: "Password minimal 6 karakter" };
+  }
+
+  const normalizedPhone = normalizePhone(identifier);
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+
+  // Verify OTP is valid and used
+  const { data: otpRecord, error: otpError } = await supabase
+    .from("kopasnow_otp")
+    .select("*")
+    .eq("phone", normalizedPhone)
+    .eq("otp_code", otpCode)
+    .eq("purpose", "password_reset")
+    .eq("is_used", true)
+    .gt("expires_at", new Date().toISOString())
+    .order("created_at", { ascending: false })
+    .maybeSingle();
+
+  if (otpError) {
+    return { error: maskError(otpError) };
+  }
+
+  if (!otpRecord) {
+ return { error: "Sesi reset password tidak valid. Silakan mulai ulang proses." };
+  }
+
+  // Get customer record
+  const { data: customer, error: customerError } = await supabase
+    .from("kopasnow_customers")
+    .select("*")
+    .eq("phone", normalizedPhone)
+    .maybeSingle();
+
+  if (customerError || !customer) {
+  return { error: "Pengguna tidak ditemukan" };
+  }
+
+  // Update password in Supabase Auth using admin client
+  try {
+  const adminClient = createAdminClient();
+    const { error: updateError } = await adminClient.auth.admin.updateUserById(
+      customer.user_id,
+{ password: newPassword }
+    );
+
+    if (updateError) {
+      return { error: maskError(updateError, "Gagal mengubah password. Silakan coba lagi.") };
+    }
+  } catch (error) {
+    console.error("Failed to update password:", error);
+    return { error: "Gagal mengubah password. Silakan coba lagi." };
+  }
+
+  return {
+    success: true,
+    message: "Password berhasil diubah. Silakan login dengan password baru Anda.",
+  };
 }

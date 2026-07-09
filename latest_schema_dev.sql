@@ -89,6 +89,30 @@ CREATE TABLE IF NOT EXISTS "public"."kopasnow_koperasi" (
 ALTER TABLE "public"."kopasnow_koperasi" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."kopasnow_online_transactions_header" (
+    "id_transaksi" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "id_pelanggan" "uuid" NOT NULL,
+    "id_koperasi" "uuid" NOT NULL,
+    "total_pembelian" numeric(12,2) NOT NULL,
+    "metode_pembayaran" "text" DEFAULT 'QRIS'::"text" NOT NULL,
+    "status_transaksi" "text" DEFAULT 'pending'::"text" NOT NULL,
+    "alamat_pengiriman" "extensions"."geography"(Point,4326),
+    "delivery_fee" numeric(12,2) DEFAULT 0 NOT NULL,
+    "notes" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "completed_at" timestamp with time zone,
+    "tipe_pembelian" "text" NOT NULL,
+    CONSTRAINT "kopasnow_online_transactions_delivery_fee_check" CHECK (("delivery_fee" >= (0)::numeric)),
+    CONSTRAINT "kopasnow_online_transactions_metode_pembayaran_check" CHECK (("metode_pembayaran" = ANY (ARRAY['QRIS'::"text", 'COD'::"text", 'TRANSFER'::"text"]))),
+    CONSTRAINT "kopasnow_online_transactions_status_transaksi_check" CHECK (("status_transaksi" = ANY (ARRAY['pending'::"text", 'paid'::"text", 'processing'::"text", 'shipped'::"text", 'completed'::"text", 'cancelled'::"text"]))),
+    CONSTRAINT "kopasnow_online_transactions_total_pembelian_check" CHECK (("total_pembelian" >= (0)::numeric))
+);
+
+
+ALTER TABLE "public"."kopasnow_online_transactions_header" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."kopasnow_products" (
     "id_produk" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "koperasi_id" "uuid" NOT NULL,
@@ -135,6 +159,7 @@ CREATE TABLE IF NOT EXISTS "public"."kopasnow_transactions" (
     "catatan" "text",
     "staff_id" "uuid",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "registered_buyer" "uuid",
     CONSTRAINT "kopasnow_transactions_jenis_check" CHECK (("jenis_transaksi" = ANY (ARRAY['masuk'::"text", 'keluar'::"text", 'penjualan'::"text", 'retur'::"text"]))),
     CONSTRAINT "kopasnow_transactions_jumlah_check" CHECK (("jumlah" > 0))
 );
@@ -160,6 +185,11 @@ ALTER TABLE ONLY "public"."kopasnow_koperasi"
 
 ALTER TABLE ONLY "public"."kopasnow_koperasi"
     ADD CONSTRAINT "kopasnow_koperasi_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."kopasnow_online_transactions_header"
+    ADD CONSTRAINT "kopasnow_online_transactions_pkey" PRIMARY KEY ("id_transaksi");
 
 
 
@@ -211,6 +241,16 @@ ALTER TABLE ONLY "public"."kopasnow_customers"
 
 
 
+ALTER TABLE ONLY "public"."kopasnow_online_transactions_header"
+    ADD CONSTRAINT "kopasnow_online_transactions_id_koperasi_fkey" FOREIGN KEY ("id_koperasi") REFERENCES "public"."kopasnow_koperasi"("id");
+
+
+
+ALTER TABLE ONLY "public"."kopasnow_online_transactions_header"
+    ADD CONSTRAINT "kopasnow_online_transactions_id_pelanggan_fkey" FOREIGN KEY ("id_pelanggan") REFERENCES "public"."kopasnow_customers"("id");
+
+
+
 ALTER TABLE ONLY "public"."kopasnow_products"
     ADD CONSTRAINT "kopasnow_products_koperasi_id_fkey" FOREIGN KEY ("koperasi_id") REFERENCES "public"."kopasnow_koperasi"("id") ON DELETE CASCADE;
 
@@ -228,6 +268,11 @@ ALTER TABLE ONLY "public"."kopasnow_transactions"
 
 ALTER TABLE ONLY "public"."kopasnow_transactions"
     ADD CONSTRAINT "kopasnow_transactions_produk_fkey" FOREIGN KEY ("id_produk") REFERENCES "public"."kopasnow_products"("id_produk") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."kopasnow_transactions"
+    ADD CONSTRAINT "kopasnow_transactions_registered_buyer_fkey" FOREIGN KEY ("registered_buyer") REFERENCES "public"."kopasnow_customers"("id");
 
 
 
@@ -251,6 +296,13 @@ ALTER TABLE "public"."kopasnow_koperasi" ENABLE ROW LEVEL SECURITY;
 
 
 CREATE POLICY "kopasnow_koperasi_public_select" ON "public"."kopasnow_koperasi" FOR SELECT USING (true);
+
+
+
+ALTER TABLE "public"."kopasnow_online_transactions_header" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "kopasnow_online_transactions_public_select" ON "public"."kopasnow_online_transactions_header" FOR SELECT USING (true);
 
 
 
@@ -333,6 +385,12 @@ GRANT ALL ON TABLE "public"."kopasnow_customers" TO "service_role";
 GRANT ALL ON TABLE "public"."kopasnow_koperasi" TO "anon";
 GRANT ALL ON TABLE "public"."kopasnow_koperasi" TO "authenticated";
 GRANT ALL ON TABLE "public"."kopasnow_koperasi" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."kopasnow_online_transactions_header" TO "anon";
+GRANT ALL ON TABLE "public"."kopasnow_online_transactions_header" TO "authenticated";
+GRANT ALL ON TABLE "public"."kopasnow_online_transactions_header" TO "service_role";
 
 
 

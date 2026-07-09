@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { signInAction, signUpAction } from "@/server/actions/auth";
+import Link from "next/link";
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -57,12 +58,12 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#F6F6F6] p-4 font-sans selection:bg-[#06C167] selection:text-white relative">
+    <div className="min-h-screen flex items-center justify-center bg-[#F6F6F6] p-4 font-sans selection:bg-[#CE1126] selection:text-white relative">
       {/* Visual top branding bar */}
       <div className="w-full h-1 flex fixed top-0 left-0 z-50">
         <div className="w-1/3 bg-[#CE1126]" />
         <div className="w-1/3 bg-white" />
-        <div className="w-1/3 bg-[#06C167]" />
+        <div className="w-1/3 bg-[#CE1126]" />
       </div>
 
       {/* Main Card Container */}
@@ -70,7 +71,7 @@ export default function AuthPage() {
         <div className="p-8 sm:p-10">
           {/* Header */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-black text-[#06C167] shadow-sm mb-4">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-black text-[#CE1126] shadow-sm mb-4">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
@@ -89,8 +90,8 @@ export default function AuthPage() {
             
             <h1 className="text-2xl font-black tracking-tight text-black flex items-center justify-center gap-0.5">
               <span>Kopas</span>
-              <span className="text-[#06C167]">Now</span>
-              <span className="bg-[#06C167] text-white px-1 py-0.5 rounded-sm font-extrabold text-[8px] uppercase tracking-wider ml-1">
+              <span className="text-[#CE1126]">Now</span>
+              <span className="bg-[#CE1126] text-white px-1 py-0.5 rounded-sm font-extrabold text-[8px] uppercase tracking-wider ml-1">
                 Mart
               </span>
             </h1>
@@ -152,9 +153,9 @@ export default function AuthPage() {
           )}
 
           {success && (
-            <div className="mb-6 p-4 bg-emerald-50 border-l-4 border-[#06C167] rounded-r-xl flex items-start gap-3">
-              <svg
-                className="w-5 h-5 text-[#06C167] shrink-0 mt-0.5"
+        <div className="mb-6 p-4 bg-emerald-50 border-l-4 border-emerald-500 rounded-r-xl flex items-start gap-3">
+        <svg
+            className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -166,7 +167,7 @@ export default function AuthPage() {
                   d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
-              <span className="text-xs font-bold text-emerald-900">{success}</span>
+               <span className="text-xs font-bold text-emerald-900">{success}</span>
             </div>
           )}
 
@@ -248,18 +249,14 @@ export default function AuthPage() {
                 <label className="text-[10px] font-black uppercase tracking-wider text-gray-400">
                   Kata Sandi (Password)
                 </label>
-                {isLogin && (
-                  <a
-                    href="#"
-                    className="text-[10px] font-extrabold text-[#06C167] hover:text-emerald-700 hover:underline"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      alert("Silakan hubungi pengurus koperasi desa untuk mereset kata sandi Anda.");
-                    }}
-                  >
-                    Lupa Sandi?
-                  </a>
-                )}
+          {isLogin && (
+            <Link
+              href="/forgot-password"
+              className="text-[10px] font-extrabold text-[#CE1126] hover:text-red-700 hover:underline"
+            >
+              Lupa Sandi?
+            </Link>
+    )}
               </div>
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-400 pointer-events-none">

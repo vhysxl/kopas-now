@@ -7,6 +7,7 @@ import { signOutAction } from "@/server/actions/auth";
 import { getKoperasiList } from "@/server/actions/getKoperasi";
 import { getAllActiveProducts, type KopasnowProduct } from "@/server/actions/getProducts";
 import { sortByDistance, getLocationName, formatDistance, type KoperasiLocation } from "@/utils/helper/geo";
+import { createTransaction } from "@/server/actions/transactions";
 
 // Dynamic import for Map component (requires window, cannot SSR)
 const KoperasiMap = dynamic(
@@ -95,9 +96,9 @@ const BANNERS = [
     title: "Bahan Pangan Segar Desa",
     subtitle: "Sembako kualitas terbaik disalurkan langsung dari Kelompok Tani setempat ke rumah Anda.",
     cta: "Belanja Sembako",
-    bg: "from-[#06C167] to-[#049B52] text-white",
+  bg: "from-[#CE1126] to-[#A00E1C] text-white",
     badge: "Harga Subsidi",
-    badgeBg: "bg-white text-[#06C167] font-black",
+    badgeBg: "bg-white text-[#CE1126] font-black",
     tagline: "🌱 DUKUNG PETANI LOKAL",
   },
 ];
@@ -266,7 +267,7 @@ id: k.id,
   const categories = [
     { name: "Semua", icon: "🛍️", bg: "bg-slate-100 text-slate-800" },
     { name: "Sembako", icon: "🌾", bg: "bg-amber-100 text-amber-700" },
-    { name: "Pertanian", icon: "🌱", bg: "bg-emerald-100 text-emerald-700" },
+  { name: "Pertanian", icon: "🌱", bg: "bg-red-50 text-red-700" },
     { name: "Kopi & Teh", icon: "☕", bg: "bg-orange-100 text-orange-700" },
     { name: "Kerajinan", icon: "🧺", bg: "bg-indigo-100 text-indigo-700" },
   ];
@@ -402,7 +403,7 @@ id: k.id,
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-[#06C167]"></div>
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-[#CE1126]"></div>
       </div>
     );
   }
@@ -412,12 +413,11 @@ id: k.id,
   }
 
   return (
-    <div className="min-h-screen bg-[#F6F6F6] font-sans selection:bg-[#06C167] selection:text-white flex flex-col relative overflow-x-hidden text-black">
-      {/* Top Banner (Merah Putih Decor & Uber Green Accent Line) */}
+    <div className="min-h-screen bg-[#F6F6F6] font-sans selection:bg-[#CE1126] selection:text-white flex flex-col relative overflow-x-hidden text-black">
+      {/* Top Banner (Merah Putih Decor) */}
       <div className="w-full h-1 flex fixed top-0 left-0 z-50">
-        <div className="w-1/3 bg-[#CE1126]" />
-        <div className="w-1/3 bg-white" />
-        <div className="w-1/3 bg-[#06C167]" />
+        <div className="w-1/2 bg-[#CE1126]" />
+        <div className="w-1/2 bg-white" />
       </div>
 
       {/* Header */}
@@ -427,8 +427,8 @@ id: k.id,
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-1 cursor-pointer" onClick={() => setSelectedCoopId("all")}>
               <span className="text-2xl font-black tracking-tight text-black">Kopas</span>
-              <span className="text-2xl font-black tracking-tight text-[#06C167]">Now</span>
-              <span className="bg-[#06C167] text-white px-1.5 py-0.5 rounded-sm font-bold text-[9px] uppercase tracking-wider ml-1">
+              <span className="text-2xl font-black tracking-tight text-[#CE1126]">Now</span>
+              <span className="bg-[#CE1126] text-white px-1.5 py-0.5 rounded-sm font-bold text-[9px] uppercase tracking-wider ml-1">
                 Mart
               </span>
             </div>
@@ -462,7 +462,7 @@ id: k.id,
         <div className="hidden md:flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#F3F3F3] hover:bg-[#EAEAEA] transition-all cursor-pointer text-xs font-bold text-black">
             <span className="text-sm">📍</span>
             <span className="truncate max-w-[200px]">
-       {gpsActive ? (locationName || "Mendeteksi lokasi...") : "GPS Dinonaktifkan"}
+              {locationName}
             </span>
           <svg
    className="w-3 h-3 text-gray-500 shrink-0"
@@ -498,7 +498,7 @@ id: k.id,
               </svg>
               <span>Keranjang</span>
               {cartTotalItems > 0 && (
-                <span className="w-5 h-5 bg-[#06C167] text-white text-[10px] font-black rounded-full flex items-center justify-center border border-black animate-scale-in">
+                <span className="w-5 h-5 bg-[#CE1126] text-white text-[10px] font-black rounded-full flex items-center justify-center border border-black animate-scale-in">
                   {cartTotalItems}
                 </span>
               )}
@@ -520,71 +520,6 @@ id: k.id,
         
         {/* Left Column: Geolocations & Stores List */}
         <section className="lg:col-span-1 space-y-6 flex flex-col">
-          
-          {/* Geolocation Status Card */}
-          <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-xs space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400">
-                Pencarian Hyperlocal
-              </h2>
-              <button
-                onClick={() => setGpsActive(!gpsActive)}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                  gpsActive ? "bg-[#06C167]" : "bg-gray-200"
-                }`}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                    gpsActive ? "translate-x-5" : "translate-x-0"
-                  }`}
-                />
-              </button>
-            </div>
-
-            {gpsActive ? (
-              <div className="flex items-start gap-3 bg-emerald-50/40 border border-emerald-100 rounded-xl p-3.5 animate-fade-in">
-                <span className="relative flex h-3.5 w-3.5 mt-0.5">
-                  <span className="animate-pulse-ring absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-[#06C167]"></span>
-                </span>
-                <div className="space-y-0.5">
-                  <p className="text-xs font-bold text-emerald-900">GPS Aktif & Akurat</p>
-                  <p className="text-[11px] text-emerald-600 leading-normal">
-                    Menampilkan produk dari koperasi dalam radius 5 km
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-start gap-3 bg-amber-50/50 border border-amber-100 rounded-xl p-3.5 animate-fade-in">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={2}
-                  stroke="currentColor"
-                  className="w-4 h-4 text-amber-600 mt-0.5 shrink-0"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
-                  />
-                </svg>
-                <div className="space-y-1.5">
-                  <p className="text-xs font-bold text-amber-900">GPS Dinonaktifkan</p>
-                  <p className="text-[11px] text-amber-600 leading-normal">
-                    Nyalakan GPS untuk menemukan toko koperasi lokal terdekat.
-                  </p>
-                  <button
-                    onClick={() => setGpsActive(true)}
-                    className="text-[11px] font-black text-[#06C167] underline hover:text-emerald-700 block cursor-pointer"
-                  >
-                    Aktifkan GPS Sekarang
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
 
       {/* Real Leaflet Map */}
           {gpsActive && (
@@ -637,7 +572,7 @@ id: k.id,
                 >
                   <div className="flex items-center gap-3">
                     <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black shrink-0 ${
-                      selectedCoopId === "all" ? "bg-[#06C167] text-white" : "bg-gray-100 text-black"
+                      selectedCoopId === "all" ? "bg-[#CE1126] text-white" : "bg-gray-100 text-black"
                     }`}>
                       ALL
                     </span>
@@ -651,7 +586,7 @@ id: k.id,
                     </div>
                   </div>
                   {selectedCoopId === "all" && (
-                    <span className="w-2 h-2 rounded-full bg-[#06C167] shadow-sm" />
+                    <span className="w-2 h-2 rounded-full bg-[#CE1126] shadow-sm" />
                   )}
                 </button>
 
@@ -671,7 +606,7 @@ id: k.id,
            const isSelected = selectedCoopId === coop.id;
           const gradients = [
                "bg-gradient-to-r from-red-500 to-rose-700",
-    "bg-gradient-to-r from-amber-500 to-emerald-600",
+  "bg-gradient-to-r from-amber-500 to-red-600",
   "bg-gradient-to-r from-blue-500 to-cyan-600",
       "bg-gradient-to-r from-purple-500 to-pink-600",
              ];
@@ -698,7 +633,7 @@ id: k.id,
       <div className="p-3.5 space-y-2">
      <div className="flex items-start justify-between gap-1">
          <p className="text-xs font-black text-black leading-tight line-clamp-1">{coop.name}</p>
-  <span className="px-1.5 py-0.5 rounded-sm text-[9px] font-black bg-emerald-50 text-emerald-700 shrink-0 border border-emerald-100">
+  <span className="px-1.5 py-0.5 rounded-sm text-[9px] font-black bg-red-50 text-red-700 shrink-0 border border-red-100">
          {coop.status === 'active' ? 'Buka' : 'Tutup'}
        </span>
             </div>
@@ -825,7 +760,7 @@ id: k.id,
                   >
                     <div className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl transition-all duration-200 ${
                       isActive
-                        ? "bg-[#06C167] text-white shadow-md shadow-emerald-500/10 border-2 border-black scale-105"
+                                 ? "bg-[#CE1126] text-white shadow-md shadow-red-500/10 border-2 border-black scale-105"
                         : "bg-[#F3F3F3] text-black hover:bg-gray-200 border-2 border-transparent"
                     } group-hover:scale-105 active:scale-95`}>
                       {cat.icon}
@@ -898,7 +833,7 @@ id: k.id,
                             Sisa {product.stock}
                           </span>
                         ) : (
-                          <span className="absolute top-2 right-2 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-100">
+                          <span className="absolute top-2 right-2 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-red-50 text-red-700 border border-red-100">
                             Stok {product.stock}
                           </span>
                         )}
@@ -906,7 +841,7 @@ id: k.id,
 
                       {/* Product Metadata */}
                       <div className="space-y-1">
-                        <span className="text-[9px] text-[#06C167] font-black uppercase tracking-widest block">
+                        <span className="text-[9px] text-[#CE1126] font-black uppercase tracking-widest block">
                           {product.coopName.toUpperCase()}
                         </span>
                         <h4 className="text-sm font-black text-black leading-snug line-clamp-2 min-h-[40px]">
@@ -930,7 +865,7 @@ id: k.id,
 
                       {/* Counter or Buy Button */}
                       {cartItem ? (
-                        <div className="flex items-center bg-[#06C167] text-white h-8 px-2 rounded-full text-xs font-black shadow-sm transition-all animate-scale-in">
+                        <div className="flex items-center bg-[#CE1126] text-white h-8 px-2 rounded-full text-xs font-black shadow-sm transition-all animate-scale-in">
                           <button
                             onClick={() => updateCartQty(product.id, -1)}
                             className="w-5 h-5 flex items-center justify-center hover:bg-black/10 rounded-full transition-all text-white font-bold cursor-pointer text-sm"
@@ -952,7 +887,7 @@ id: k.id,
                           className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer shadow-sm ${
                             isOutOfStock
                               ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                              : "bg-[#06C167] text-white hover:bg-[#05A357] hover:scale-105 active:scale-95"
+                              : "bg-[#CE1126] text-white hover:bg-[#05A357] hover:scale-105 active:scale-95"
                           }`}
                         >
                           <svg
@@ -984,7 +919,7 @@ id: k.id,
             className="w-full bg-black text-white hover:bg-neutral-900 px-6 py-4 rounded-xl shadow-2xl flex items-center justify-between border border-neutral-800 cursor-pointer transition-all duration-300 hover:scale-101"
           >
             <div className="flex items-center gap-3">
-              <span className="w-6 h-6 bg-[#06C167] text-white text-xs font-black rounded-full flex items-center justify-center">
+              <span className="w-6 h-6 bg-[#CE1126] text-white text-xs font-black rounded-full flex items-center justify-center">
                 {cartTotalItems}
               </span>
               <div className="text-left">
@@ -1003,7 +938,7 @@ id: k.id,
                 viewBox="0 0 24 24"
                 strokeWidth={2.5}
                 stroke="currentColor"
-                className="w-4 h-4 text-[#06C167]"
+                className="w-4 h-4 text-[#CE1126]"
               >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
               </svg>
@@ -1135,10 +1070,10 @@ id: k.id,
                       Kode Promo (Simulasi)
                     </label>
                     {appliedPromo ? (
-                      <div className="flex items-center justify-between bg-emerald-50 border border-emerald-100 p-2.5 rounded-xl">
+                      <div className="flex items-center justify-between bg-red-50 border border-red-100 p-2.5 rounded-xl">
                         <div className="flex items-center gap-2">
                           <span className="text-xs">🏷️</span>
-                          <span className="text-xs font-bold text-emerald-800">
+                          <span className="text-xs font-bold text-red-800">
                             Promo Aktif: <strong className="font-extrabold">{appliedPromo}</strong> (Hemat 10%)
                           </span>
                         </div>
@@ -1197,14 +1132,14 @@ id: k.id,
                     <span className="text-black">Rp {serviceFee.toLocaleString("id-ID")}</span>
                   </div>
                   {discountAmount > 0 && (
-                    <div className="flex justify-between text-emerald-600 font-extrabold">
+                    <div className="flex justify-between text-red-600 font-extrabold">
                       <span>Diskon Promo</span>
                       <span>-Rp {discountAmount.toLocaleString("id-ID")}</span>
                     </div>
                   )}
                   <div className="flex justify-between text-black font-black border-t border-gray-200/60 pt-3 text-sm">
                     <span>Total Tagihan</span>
-                    <span className="text-[#06C167] text-base">
+                    <span className="text-[#CE1126] text-base">
                       Rp {cartTotalAmount.toLocaleString("id-ID")}
                     </span>
                   </div>
@@ -1213,7 +1148,7 @@ id: k.id,
                 {/* Submit Checkout */}
                 <button
                   onClick={handleCheckout}
-                  className="w-full bg-[#06C167] hover:bg-[#05A357] text-white py-4 px-5 font-black text-xs rounded-full transition-all duration-200 shadow-md active:scale-98 flex items-center justify-between cursor-pointer"
+                  className="w-full bg-[#CE1126] hover:bg-[#05A357] text-white py-4 px-5 font-black text-xs rounded-full transition-all duration-200 shadow-md active:scale-98 flex items-center justify-between cursor-pointer"
                 >
                   <span>Pesan Sekarang (Simulasi)</span>
                   <span>Rp {cartTotalAmount.toLocaleString("id-ID")}</span>
@@ -1233,14 +1168,14 @@ id: k.id,
           {/* Profile Card body */}
           <div className="relative w-full max-w-sm bg-white rounded-3xl overflow-hidden shadow-2xl border border-gray-100 animate-fade-in z-10 flex flex-col">
             {/* Top accent branding line */}
-            <div className="w-full h-1 bg-[#06C167]" />
+            <div className="w-full h-1 bg-[#CE1126]" />
 
             <div className="p-6 pb-2">
               {/* Premium VIP black card container */}
               <div className="bg-gradient-to-br from-[#111111] via-[#242424] to-[#000000] text-white p-5 rounded-2xl shadow-xl relative overflow-hidden space-y-6 border border-amber-500/20 select-none">
                 {/* Shiny glow patterns */}
                 <div className="absolute -right-12 -top-12 w-32 h-32 bg-amber-400/10 rounded-full blur-2xl pointer-events-none" />
-                <div className="absolute -left-12 -bottom-12 w-32 h-32 bg-[#06C167]/20 rounded-full blur-2xl pointer-events-none" />
+                <div className="absolute -left-12 -bottom-12 w-32 h-32 bg-[#CE1126]/20 rounded-full blur-2xl pointer-events-none" />
                 
                 {/* Card Title */}
                 <div className="flex items-center justify-between border-b border-white/15 pb-3">
@@ -1354,7 +1289,7 @@ id: k.id,
             
             {/* Header info */}
             <div className="space-y-1">
-              <div className="w-12 h-12 bg-emerald-50 text-[#06C167] rounded-full flex items-center justify-center mx-auto border border-emerald-100 shadow-inner">
+              <div className="w-12 h-12 bg-red-50 text-[#CE1126] rounded-full flex items-center justify-center mx-auto border border-red-100 shadow-inner">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
@@ -1367,7 +1302,7 @@ id: k.id,
                 </svg>
               </div>
               <h3 className="text-base font-black text-black tracking-tight mt-2">Pesanan Sedang Diproses</h3>
-              <p className="text-[10px] text-emerald-600 font-extrabold uppercase tracking-wider">
+              <p className="text-[10px] text-red-600 font-extrabold uppercase tracking-wider">
                 Pengantaran Hyperlocal Real-Time
               </p>
             </div>
@@ -1381,8 +1316,8 @@ id: k.id,
                 
     {/* Store Pin (Origin) */}
 <g transform="translate(140, 110)">
-                  <circle r="12" fill="#06C167" fillOpacity="0.2" className="animate-pulse" />
-                  <circle r="7" fill="#06C167" />
+               <circle r="12" fill="#CE1126" fillOpacity="0.2" className="animate-pulse" />
+  <circle r="7" fill="#CE1126" />
                   <text y="3" fontSize="8" fontWeight="bold" fill="white" textAnchor="middle">S</text>
                 </g>
 
@@ -1413,7 +1348,7 @@ id: k.id,
 
               {/* Float Map Overlay Progress */}
               <div className="absolute top-2 left-2 bg-black/90 text-white px-2.5 py-1 rounded text-[8px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-md">
-                <span className="w-1.5 h-1.5 bg-[#06C167] rounded-full animate-ping" />
+                <span className="w-1.5 h-1.5 bg-[#CE1126] rounded-full animate-ping" />
                 <span>KURIR: {riderProgress}% TRANSIT</span>
               </div>
             </div>
@@ -1428,11 +1363,11 @@ id: k.id,
               {/* Step indicator */}
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-[#06C167] text-[10px]">✓</span>
+                  <span className="text-[#CE1126] text-[10px]">✓</span>
                   <span className="text-gray-500 leading-none">Pesanan diterima pengurus koperasi</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={riderProgress >= 30 ? "text-[#06C167] text-[10px]" : "text-gray-300 text-[10px]"}>
+                  <span className={riderProgress >= 30 ? "text-[#CE1126] text-[10px]" : "text-gray-300 text-[10px]"}>
                     {riderProgress >= 30 ? "✓" : "○"}
                   </span>
                   <span className={`${riderProgress >= 30 ? "text-gray-700" : "text-gray-450"} leading-none`}>
@@ -1440,7 +1375,7 @@ id: k.id,
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={riderProgress > 30 && riderProgress < 100 ? "text-[#06C167] text-[10px] animate-ping" : riderProgress >= 100 ? "text-[#06C167] text-[10px]" : "text-gray-300 text-[10px]"}>
+                  <span className={riderProgress > 30 && riderProgress < 100 ? "text-[#CE1126] text-[10px] animate-ping" : riderProgress >= 100 ? "text-[#CE1126] text-[10px]" : "text-gray-300 text-[10px]"}>
                     {riderProgress > 30 && riderProgress < 100 ? "●" : riderProgress >= 100 ? "✓" : "○"}
                   </span>
                   <span className={`${riderProgress > 30 ? "text-black" : "text-gray-450"} leading-none`}>
@@ -1454,7 +1389,7 @@ id: k.id,
               {/* Progress Bar */}
               <div className="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden mt-2">
                 <div
-                  className="bg-[#06C167] h-full transition-all duration-150"
+                  className="bg-[#CE1126] h-full transition-all duration-150"
                   style={{ width: `${riderProgress}%` }}
                 />
               </div>
@@ -1462,12 +1397,12 @@ id: k.id,
               {/* Bill Details */}
               <div className="flex justify-between border-t border-gray-150 pt-2.5 font-black text-black">
                 <span>Total Bayar</span>
-                <span className="text-[#06C167]">Rp {lastOrderDetails.total.toLocaleString("id-ID")}</span>
+                <span className="text-[#CE1126]">Rp {lastOrderDetails.total.toLocaleString("id-ID")}</span>
               </div>
             </div>
 
             {/* WA Notification simulation details */}
-            <div className="p-3 bg-emerald-50/50 border border-emerald-100 rounded-xl text-left text-[10px] text-emerald-800 leading-normal flex items-start gap-2.5 font-medium">
+            <div className="p-3 bg-red-50/50 border border-red-100 rounded-xl text-left text-[10px] text-red-800 leading-normal flex items-start gap-2.5 font-medium">
               <span className="text-base leading-none">💬</span>
               <p>
                 <strong>[Simulasi Notifikasi]</strong> Struk pembelian digital telah dikirim ke nomor WhatsApp pengurus Koperasi dan Kurir via Fonnte Gateway API.
