@@ -102,6 +102,7 @@ CREATE TABLE IF NOT EXISTS "public"."kopasnow_products" (
     "is_active" boolean DEFAULT true NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "kategori_produk" "text"[],
     CONSTRAINT "kopasnow_products_harga_produk_check" CHECK (("harga_produk" >= (0)::numeric)),
     CONSTRAINT "kopasnow_products_stok_reserved_check" CHECK (("stok_reserved" >= 0)),
     CONSTRAINT "kopasnow_products_stok_tersedia_check" CHECK (("stok_tersedia" >= 0))
@@ -121,6 +122,25 @@ CREATE TABLE IF NOT EXISTS "public"."kopasnow_staff" (
 
 
 ALTER TABLE "public"."kopasnow_staff" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."kopasnow_transactions" (
+    "id_transaksi" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "koperasi_id" "uuid" NOT NULL,
+    "id_produk" "uuid" NOT NULL,
+    "jenis_transaksi" "text" NOT NULL,
+    "jumlah" integer NOT NULL,
+    "harga_satuan" numeric(12,2),
+    "total_harga" numeric(12,2),
+    "catatan" "text",
+    "staff_id" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "kopasnow_transactions_jenis_check" CHECK (("jenis_transaksi" = ANY (ARRAY['masuk'::"text", 'keluar'::"text", 'penjualan'::"text", 'retur'::"text"]))),
+    CONSTRAINT "kopasnow_transactions_jumlah_check" CHECK (("jumlah" > 0))
+);
+
+
+ALTER TABLE "public"."kopasnow_transactions" OWNER TO "postgres";
 
 
 ALTER TABLE ONLY "public"."kopasnow_customers"
@@ -153,6 +173,11 @@ ALTER TABLE ONLY "public"."kopasnow_staff"
 
 
 
+ALTER TABLE ONLY "public"."kopasnow_transactions"
+    ADD CONSTRAINT "kopasnow_transactions_pkey" PRIMARY KEY ("id_transaksi");
+
+
+
 CREATE UNIQUE INDEX "idx_customers_email" ON "public"."kopasnow_customers" USING "btree" ("email") WHERE ("email" IS NOT NULL);
 
 
@@ -166,6 +191,18 @@ CREATE INDEX "idx_kopasnow_products_koperasi" ON "public"."kopasnow_products" US
 
 
 CREATE INDEX "idx_koperasi_lokasi" ON "public"."kopasnow_koperasi" USING "gist" ("lokasi");
+
+
+
+CREATE INDEX "idx_transactions_created" ON "public"."kopasnow_transactions" USING "btree" ("created_at" DESC);
+
+
+
+CREATE INDEX "idx_transactions_koperasi" ON "public"."kopasnow_transactions" USING "btree" ("koperasi_id");
+
+
+
+CREATE INDEX "idx_transactions_produk" ON "public"."kopasnow_transactions" USING "btree" ("id_produk");
 
 
 
@@ -184,7 +221,26 @@ ALTER TABLE ONLY "public"."kopasnow_staff"
 
 
 
+ALTER TABLE ONLY "public"."kopasnow_transactions"
+    ADD CONSTRAINT "kopasnow_transactions_koperasi_fkey" FOREIGN KEY ("koperasi_id") REFERENCES "public"."kopasnow_koperasi"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."kopasnow_transactions"
+    ADD CONSTRAINT "kopasnow_transactions_produk_fkey" FOREIGN KEY ("id_produk") REFERENCES "public"."kopasnow_products"("id_produk") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."kopasnow_transactions"
+    ADD CONSTRAINT "kopasnow_transactions_staff_fkey" FOREIGN KEY ("staff_id") REFERENCES "public"."kopasnow_staff"("id_staff");
+
+
+
 CREATE POLICY "Allow users to insert their own profile" ON "public"."kopasnow_customers" FOR INSERT WITH CHECK (("auth"."uid"() = "user_id"));
+
+
+
+CREATE POLICY "Authenticated users can insert transactions" ON "public"."kopasnow_transactions" FOR INSERT TO "authenticated" WITH CHECK (true);
 
 
 
@@ -201,11 +257,58 @@ CREATE POLICY "kopasnow_koperasi_public_select" ON "public"."kopasnow_koperasi" 
 ALTER TABLE "public"."kopasnow_products" ENABLE ROW LEVEL SECURITY;
 
 
+CREATE POLICY "kopasnow_products_anon_delete" ON "public"."kopasnow_products" FOR DELETE TO "anon" USING (true);
+
+
+
+CREATE POLICY "kopasnow_products_anon_insert" ON "public"."kopasnow_products" FOR INSERT TO "anon" WITH CHECK (true);
+
+
+
+CREATE POLICY "kopasnow_products_anon_update" ON "public"."kopasnow_products" FOR UPDATE TO "anon" USING (true) WITH CHECK (true);
+
+
+
+CREATE POLICY "kopasnow_products_authenticated_delete" ON "public"."kopasnow_products" FOR DELETE TO "authenticated" USING (true);
+
+
+
+CREATE POLICY "kopasnow_products_authenticated_insert" ON "public"."kopasnow_products" FOR INSERT TO "authenticated" WITH CHECK (true);
+
+
+
+CREATE POLICY "kopasnow_products_authenticated_update" ON "public"."kopasnow_products" FOR UPDATE TO "authenticated" USING (true) WITH CHECK (true);
+
+
+
 CREATE POLICY "kopasnow_products_public_select" ON "public"."kopasnow_products" FOR SELECT USING (true);
 
 
 
 ALTER TABLE "public"."kopasnow_staff" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "kopasnow_staff_public_select" ON "public"."kopasnow_staff" FOR SELECT USING (true);
+
+
+
+ALTER TABLE "public"."kopasnow_transactions" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "kopasnow_transactions_anon_delete" ON "public"."kopasnow_transactions" FOR DELETE TO "anon" USING (true);
+
+
+
+CREATE POLICY "kopasnow_transactions_anon_insert" ON "public"."kopasnow_transactions" FOR INSERT TO "anon" WITH CHECK (true);
+
+
+
+CREATE POLICY "kopasnow_transactions_anon_update" ON "public"."kopasnow_transactions" FOR UPDATE TO "anon" USING (true) WITH CHECK (true);
+
+
+
+CREATE POLICY "kopasnow_transactions_public_select" ON "public"."kopasnow_transactions" FOR SELECT USING (true);
+
 
 
 GRANT USAGE ON SCHEMA "public" TO "postgres";
@@ -242,6 +345,12 @@ GRANT ALL ON TABLE "public"."kopasnow_products" TO "service_role";
 GRANT ALL ON TABLE "public"."kopasnow_staff" TO "anon";
 GRANT ALL ON TABLE "public"."kopasnow_staff" TO "authenticated";
 GRANT ALL ON TABLE "public"."kopasnow_staff" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."kopasnow_transactions" TO "anon";
+GRANT ALL ON TABLE "public"."kopasnow_transactions" TO "authenticated";
+GRANT ALL ON TABLE "public"."kopasnow_transactions" TO "service_role";
 
 
 

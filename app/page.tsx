@@ -1,8 +1,28 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { useUserStore } from "@/store/useUserStore";
 import { signOutAction } from "@/server/actions/auth";
+import { getKoperasiList } from "@/server/actions/getKoperasi";
+import { getAllActiveProducts, type KopasnowProduct } from "@/server/actions/getProducts";
+import { sortByDistance, getLocationName, formatDistance, type KoperasiLocation } from "@/utils/helper/geo";
+
+// Dynamic import for Map component (requires window, cannot SSR)
+const KoperasiMap = dynamic(
+  () => import("@/components/kopasnow/KoperasiMap"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-full rounded-2xl bg-slate-100 animate-pulse flex items-center justify-center border border-slate-200">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#CE1126] mx-auto mb-2"></div>
+          <p className="text-xs text-slate-400 font-medium">Memuat peta...</p>
+        </div>
+   </div>
+    ),
+  }
+);
 
 // Interface Definitions
 interface Product {
@@ -10,7 +30,6 @@ interface Product {
   name: string;
   price: number;
   stock: number;
-  initialStock: number;
   category: string;
   unit: string;
   icon: string;
@@ -22,150 +41,42 @@ interface Cooperative {
   id: string;
   name: string;
   distance: number;
-  address: string;
+address: string;
   phone: string;
-  rating: number;
-  status: "Buka" | "Tutup";
-  coords: { x: number; y: number };
-  color: string;
-  prepTime: string;
-  deliveryFee: number;
+  status: "active" | "inactive";
+  lat: number;
+  lng: number;
+  kode_koperasi: string;
 }
 
 interface CartItem {
   product: Product;
-  quantity: number;
+quantity: number;
 }
 
-// Dummy Cooperatives Data (Enriched with Uber-like details)
-const INITIAL_COOPERATIVES: Cooperative[] = [
-  {
-    id: "coop-1",
-    name: "KUD Merah Putih Karanganyar",
-    distance: 0.8,
-    address: "Jl. Raya Karanganyar No. 45, Karanganyar",
-    phone: "081234567890",
-    rating: 4.8,
-    status: "Buka",
-    coords: { x: 140, y: 110 },
-    color: "#CE1126",
-    prepTime: "10–15 min",
-    deliveryFee: 5000,
-  },
-  {
-    id: "coop-2",
-    name: "Koperasi Tani Rejo Makmur",
-    distance: 2.3,
-    address: "Dusun Sukorejo, RT 02/RW 04, Karanganyar",
-    phone: "089876543210",
-    rating: 4.6,
-    status: "Buka",
-    coords: { x: 260, y: 220 },
-    color: "#EAB308",
-    prepTime: "15–25 min",
-    deliveryFee: 7000,
-  },
-];
+// Helper function to get icon based on product name/category
+function getProductIcon(name: string): string {
+  const lowerName = name.toLowerCase();
+  if (lowerName.includes('beras') || lowerName.includes('padi')) return '🌾';
+  if (lowerName.includes('minyak')) return '🍶';
+  if (lowerName.includes('pupuk')) return '🌱';
+  if (lowerName.includes('kopi')) return '☕';
+  if (lowerName.includes('gula')) return '🧂';
+  if (lowerName.includes('pakan')) return '🌽';
+  if (lowerName.includes('anyaman') || lowerName.includes('kerajinan')) return '🧺';
+  if (lowerName.includes('teh')) return '🍵';
+  return '📦';
+}
 
-// Dummy Products Data (Enriched with better icons)
-const INITIAL_PRODUCTS: Product[] = [
-  {
-    id: "prod-1",
-    name: "Beras Cianjur Pandan Wangi",
-    price: 14500,
-    stock: 15,
-    initialStock: 15,
-    category: "Sembako",
-    unit: "kg",
-    icon: "🌾",
-    coopId: "coop-1",
-    coopName: "KUD Merah Putih Karanganyar",
-  },
-  {
-    id: "prod-2",
-    name: "Minyak Goreng Kita",
-    price: 16000,
-    stock: 48,
-    initialStock: 48,
-    category: "Sembako",
-    unit: "Liter",
-    icon: "🍶",
-    coopId: "coop-1",
-    coopName: "KUD Merah Putih Karanganyar",
-  },
-  {
-    id: "prod-3",
-    name: "Pupuk Urea Bersubsidi",
-    price: 112500,
-    stock: 120,
-    initialStock: 120,
-    category: "Pertanian",
-    unit: "sak",
-    icon: "🌱",
-    coopId: "coop-1",
-    coopName: "KUD Merah Putih Karanganyar",
-  },
-  {
-    id: "prod-4",
-    name: "Kopi Robusta Lereng Lawu",
-    price: 25000,
-    stock: 9,
-    initialStock: 9,
-    category: "Kopi & Teh",
-    unit: "200g",
-    icon: "☕",
-    coopId: "coop-1",
-    coopName: "KUD Merah Putih Karanganyar",
-  },
-  {
-    id: "prod-5",
-    name: "Gula Pasir Kristal Putih",
-    price: 15500,
-    stock: 60,
-    initialStock: 60,
-    category: "Sembako",
-    unit: "kg",
-    icon: "🧂",
-    coopId: "coop-2",
-    coopName: "Koperasi Tani Rejo Makmur",
-  },
-  {
-    id: "prod-6",
-    name: "Pakan Ternak Konsentrat",
-    price: 8000,
-    stock: 300,
-    initialStock: 300,
-    category: "Pertanian",
-    unit: "kg",
-    icon: "🌽",
-    coopId: "coop-2",
-    coopName: "Koperasi Tani Rejo Makmur",
-  },
-  {
-    id: "prod-7",
-    name: "Kerajinan Anyaman Bambu",
-    price: 35000,
-    stock: 5,
-    initialStock: 5,
-    category: "Kerajinan",
-    unit: "pcs",
-    icon: "🧺",
-    coopId: "coop-2",
-    coopName: "Koperasi Tani Rejo Makmur",
-  },
-  {
-    id: "prod-8",
-    name: "Teh Melati Wangi Desa",
-    price: 6000,
-    stock: 75,
-    initialStock: 75,
-    category: "Kopi & Teh",
-    unit: "pak",
-    icon: "🍵",
-    coopId: "coop-2",
-    coopName: "Koperasi Tani Rejo Makmur",
-  },
-];
+// Helper function to categorize products
+function categorizeProduct(name: string, description?: string): string {
+  const text = `${name} ${description || ''}`.toLowerCase();
+  if (text.includes('beras') || text.includes('minyak') || text.includes('gula')) return 'Sembako';
+  if (text.includes('pupuk') || text.includes('pakan')) return 'Pertanian';
+  if (text.includes('kopi') || text.includes('teh')) return 'Kopi & Teh';
+  if (text.includes('kerajinan') || text.includes('anyaman')) return 'Kerajinan';
+  return 'Lainnya';
+}
 
 // Carousel Promo Banners
 const BANNERS = [
@@ -196,12 +107,21 @@ export default function Home() {
   const customer = useUserStore((state) => state.customer);
   const isLoading = useUserStore((state) => state.isLoading);
 
+  // Supabase Data States
+  const [koperasiList, setKoperasiList] = useState<KoperasiLocation[]>([]);
+  const [cooperatives, setCooperatives] = useState<Cooperative[]>([]);
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+  const [locationName, setLocationName] = useState<string | null>(null);
+  const [selectedMapId, setSelectedMapId] = useState<string | null>(null);
+  const [isFetching, setIsFetching] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
   // States
   const [gpsActive, setGpsActive] = useState(true);
   const [selectedCoopId, setSelectedCoopId] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Semua");
-  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
+  const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -224,6 +144,83 @@ export default function Home() {
 
   // Rider Animation State
   const [riderProgress, setRiderProgress] = useState(0);
+
+  // Fetch koperasi and products data from Supabase on mount
+  useEffect(() => {
+    async function fetchData() {
+      setIsFetching(true);
+      const [koperasiResult, productsResult] = await Promise.all([
+        getKoperasiList(),
+        getAllActiveProducts(),
+      ]);
+
+      if (koperasiResult.error) {
+        setFetchError(koperasiResult.error);
+      } else if (koperasiResult.data) {
+        setKoperasiList(koperasiResult.data);
+     
+        // Convert to Cooperative format for existing UI
+        const coops: Cooperative[] = koperasiResult.data.map((k) => ({
+          id: k.id,
+  name: k.nama,
+     distance: 0,
+          address: k.alamat || '',
+          phone: k.admin_phone || '',
+    status: k.status as "active" | "inactive",
+          lat: k.lat,
+ lng: k.lng,
+       kode_koperasi: k.kode_koperasi,
+        }));
+     setCooperatives(coops);
+}
+
+if (productsResult.data) {
+        // Convert Supabase products to Product format
+        const convertedProducts: Product[] = productsResult.data.map((p: KopasnowProduct) => ({
+          id: p.id_produk,
+       name: p.nama_produk,
+  price: parseFloat(p.harga_produk),
+          stock: p.stok_tersedia,
+       category: categorizeProduct(p.nama_produk, p.deskripsi_produk || ''),
+ unit: p.satuan_produk,
+    icon: getProductIcon(p.nama_produk),
+          coopId: p.koperasi_id,
+          coopName: koperasiResult.data?.find((k) => k.id === p.koperasi_id)?.nama || 'Koperasi',
+        }));
+        setProducts(convertedProducts);
+      }
+      
+    setIsFetching(false);
+    }
+    fetchData();
+  }, []);
+
+  // Sort cooperatives by distance when user location changes
+  useEffect(() => {
+    if (userLocation && koperasiList.length > 0) {
+      const sorted = sortByDistance(koperasiList, userLocation[0], userLocation[1]);
+      const coops: Cooperative[] = sorted.map((k) => ({
+id: k.id,
+ name: k.nama,
+   distance: k.distance,
+     address: k.alamat || '',
+        phone: k.admin_phone || '',
+        status: k.status as "active" | "inactive",
+        lat: k.lat,
+        lng: k.lng,
+        kode_koperasi: k.kode_koperasi,
+      }));
+      setCooperatives(coops);
+    }
+  }, [userLocation, koperasiList]);
+
+  const handleUserLocationChange = useCallback(async (lat: number, lng: number) => {
+    setUserLocation([lat, lng]);
+    const locName = await getLocationName(lat, lng);
+    if (locName) {
+      setLocationName(locName);
+    }
+  }, []);
 
   // Auto-rotate banners
   useEffect(() => {
@@ -326,13 +323,18 @@ export default function Home() {
   // Determine delivery fee based on selected store
   const currentStore = useMemo(() => {
     if (cart.length === 0) return null;
-    const firstItemCoopId = cart[0].product.coopId;
-    return INITIAL_COOPERATIVES.find((c) => c.id === firstItemCoopId) || null;
-  }, [cart]);
+  const firstItemCoopId = cart[0].product.coopId;
+    return cooperatives.find((c) => c.id === firstItemCoopId) || null;
+  }, [cart, cooperatives]);
 
   const deliveryFee = useMemo(() => {
     if (deliveryMethod === "pickup" || cart.length === 0) return 0;
-    return currentStore ? currentStore.deliveryFee : 5000;
+    // Calculate delivery fee based on distance (if available)
+    if (currentStore && currentStore.distance > 0) {
+      // Rp 5000 base + Rp 1000 per km
+    return 5000 + Math.floor(currentStore.distance * 1000);
+    }
+    return 5000; // Default delivery fee
   }, [deliveryMethod, currentStore, cart]);
 
   // Service Fee typical of Uber Mart
@@ -391,23 +393,11 @@ export default function Home() {
     setCheckoutSuccess(true);
   };
 
-  // Compute rider coordinates along route
+  // Compute rider coordinates along route (simplified for now)
   const riderCoords = useMemo(() => {
-    if (!lastOrderDetails) return { x: 180, y: 160 };
-    const sourceStore = INITIAL_COOPERATIVES.find((c) => c.id === lastOrderDetails.coopId);
-    if (!sourceStore) return { x: 180, y: 160 };
-
-    const startX = sourceStore.coords.x;
-    const startY = sourceStore.coords.y;
-    const endX = 180; // User coordinate
-    const endY = 160;
-
-    // Linear interpolation
-    const currentX = startX + (endX - startX) * (riderProgress / 100);
-    const currentY = startY + (endY - startY) * (riderProgress / 100);
-
-    return { x: currentX, y: currentY };
-  }, [riderProgress, lastOrderDetails]);
+    // Simplified animation - can be enhanced with actual coordinates later
+    return { x: 180 + (riderProgress * 0.5), y: 160 - (riderProgress * 0.3) };
+  }, [riderProgress]);
 
   if (isLoading) {
     return (
@@ -468,22 +458,22 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Hyperlocal Address Selector */}
-          <div className="hidden md:flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#F3F3F3] hover:bg-[#EAEAEA] transition-all cursor-pointer text-xs font-bold text-black">
+     {/* Hyperlocal Address Selector */}
+        <div className="hidden md:flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#F3F3F3] hover:bg-[#EAEAEA] transition-all cursor-pointer text-xs font-bold text-black">
             <span className="text-sm">📍</span>
             <span className="truncate max-w-[200px]">
-              {gpsActive ? "Karanganyar Desa, RT 02/RW 04" : "GPS Dinonaktifkan"}
+       {gpsActive ? (locationName || "Mendeteksi lokasi...") : "GPS Dinonaktifkan"}
             </span>
-            <svg
-              className="w-3 h-3 text-gray-500 shrink-0"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          <svg
+   className="w-3 h-3 text-gray-500 shrink-0"
+     fill="none"
+     stroke="currentColor"
+        strokeWidth="2.5"
+     viewBox="0 0 24 24"
+   >
+        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
             </svg>
-          </div>
+ </div>
 
           {/* Right Header Navigation */}
           <div className="flex items-center gap-3">
@@ -596,59 +586,37 @@ export default function Home() {
             )}
           </div>
 
-          {/* Hyperlocal Map Mockup */}
+      {/* Real Leaflet Map */}
           {gpsActive && (
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-xs overflow-hidden flex flex-col animate-fade-in">
-              <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between bg-slate-50/50">
-                <span className="text-[10px] font-extrabold text-gray-500 uppercase tracking-wider">Peta Hyperlocal</span>
-                <span className="text-[10px] text-gray-400 font-mono">Radius 5 km</span>
-              </div>
-              <div className="bg-[#E5E9F0] h-48 relative overflow-hidden">
-                <svg className="w-full h-full" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  {/* Grid lines for map feel */}
-                  <path d="M 0,150 Q 150,150 200,80 T 400,200" stroke="#CBD5E1" strokeWidth="8" fill="none" />
-                  <path d="M 200,0 Q 180,120 180,180 T 300,300" stroke="#CBD5E1" strokeWidth="6" fill="none" />
-                  <path d="M 0,260 C 150,220 200,280 400,240" stroke="#94A3B8" strokeWidth="2" strokeDasharray="4 4" fill="none" />
-
-                  {/* Rivers / Green spaces */}
-                  <path d="M 0,50 Q 100,80 150,40 T 400,100" stroke="#93C5FD" strokeWidth="4" fill="none" />
-                  <rect x="20" y="20" width="80" height="60" rx="10" fill="#22C55E" fillOpacity="0.08" />
-                  <rect x="250" y="30" width="100" height="80" rx="10" fill="#22C55E" fillOpacity="0.08" />
-                  <rect x="50" y="190" width="90" height="80" rx="10" fill="#22C55E" fillOpacity="0.08" />
-
-                  {/* User Location pin */}
-                  <g transform="translate(180, 160)">
-                    <circle r="16" fill="#3B82F6" fillOpacity="0.15" className="animate-pulse-ring" />
-                    <circle r="6" fill="#FFFFFF" />
-                    <circle r="4.5" fill="#3B82F6" className="animate-pulse-dot" />
-                  </g>
-
-                  {/* Coop Pin 1 */}
-                  <g transform="translate(140, 110)" className="cursor-pointer" onClick={() => setSelectedCoopId("coop-1")}>
-                    <circle r="14" fill="#CE1126" fillOpacity="0.15" className={selectedCoopId === "coop-1" ? "animate-pulse-ring" : ""} />
-                    <path d="M0 -12 C-5 -12 -9 -8 -9 0 C-9 6 0 14 0 14 C0 14 9 6 9 0 C9 -8 5 -12 0 -12 Z" fill="#CE1126" />
-                    <circle cy="-1.5" r="3.5" fill="#FFFFFF" />
-                  </g>
-
-                  {/* Coop Pin 2 */}
-                  <g transform="translate(260, 220)" className="cursor-pointer" onClick={() => setSelectedCoopId("coop-2")}>
-                    <circle r="14" fill="#EAB308" fillOpacity="0.15" className={selectedCoopId === "coop-2" ? "animate-pulse-ring" : ""} />
-                    <path d="M0 -12 C-5 -12 -9 -8 -9 0 C-9 6 0 14 0 14 C0 14 9 6 9 0 C9 -8 5 -12 0 -12 Z" fill="#EAB308" />
-                    <circle cy="-1.5" r="3.5" fill="#FFFFFF" />
-                  </g>
-                </svg>
-
-                {/* Floating Labels */}
-                <div className="absolute top-2 left-2 bg-white/95 px-2 py-0.5 rounded text-[8px] font-black text-gray-500 shadow-sm border border-gray-100">
-                  Desa Karanganyar
-                </div>
-                <div className="absolute bottom-2 right-2 bg-black text-white px-2 py-0.5 rounded text-[8px] font-bold flex items-center gap-1 shadow-sm">
-                  <span className="w-1.5 h-1.5 bg-[#3B82F6] rounded-full" />
-                  Anda
-                </div>
-              </div>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-xs overflow-hidden flex flex-col animate-fade-in">
+           <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between bg-slate-50/50">
+    <span className="text-[10px] font-extrabold text-gray-500 uppercase tracking-wider">Peta Koperasi</span>
+      <span className="text-[10px] text-gray-400 font-mono">
+      {locationName || "Mendeteksi lokasi..."}
+        </span>
+      </div>
+          <div className="h-64 relative">
+                {isFetching ? (
+ <div className="w-full h-full flex items-center justify-center bg-slate-100">
+        <div className="text-center">
+  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#CE1126] mx-auto mb-2"></div>
+            <p className="text-xs text-slate-400 font-medium">Memuat peta...</p>
             </div>
-          )}
+                  </div>
+            ) : fetchError ? (
+     <div className="w-full h-full flex items-center justify-center bg-red-50">
+        <p className="text-xs text-red-600">{fetchError}</p>
+        </div>
+ ) : (
+      <KoperasiMap
+          koperasiList={koperasiList}
+  onUserLocationChange={handleUserLocationChange}
+                  selectedId={selectedMapId}
+ />
+    )}
+    </div>
+      </div>
+  )}
 
           {/* Cooperatives/Stores List */}
           {gpsActive && (
@@ -687,58 +655,74 @@ export default function Home() {
                   )}
                 </button>
 
-                {/* Individual Store Listings (Uber Store Cards style) */}
-                {INITIAL_COOPERATIVES.map((coop) => {
-                  const isSelected = selectedCoopId === coop.id;
-                  return (
-                    <button
-                      key={coop.id}
-                      onClick={() => setSelectedCoopId(coop.id)}
-                      className={`w-full text-left rounded-xl border overflow-hidden transition-all duration-200 cursor-pointer flex flex-col ${
-                        isSelected
-                          ? "border-black bg-white ring-1 ring-black shadow-md"
-                          : "border-gray-100 bg-white hover:border-gray-300 hover:shadow-sm"
-                      }`}
-                    >
-                      {/* Banner Cover representation (Styled CSS Gradient) */}
-                      <div className={`h-14 w-full relative ${
-                        coop.id === "coop-1"
-                          ? "bg-gradient-to-r from-red-500 to-rose-700"
-                          : "bg-gradient-to-r from-amber-500 to-emerald-600"
-                      } flex items-end p-2`}>
-                        {/* Shadow overlay */}
-                        <div className="absolute inset-0 bg-black/10" />
-                        <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-sm text-[8px] font-black uppercase tracking-wider bg-white/90 text-black shadow-sm">
-                          {coop.prepTime}
-                        </span>
-                      </div>
+        {/* Individual Store Listings (Uber Store Cards style) */}
+    {isFetching ? (
+    <div className="space-y-3">
+        {[1, 2].map((i) => (
+        <div key={i} className="h-32 rounded-xl bg-gray-100 animate-pulse border border-gray-200" />
+ ))}
+        </div>
+       ) : cooperatives.length === 0 ? (
+         <div className="text-center py-8 text-gray-400">
+          <p className="text-xs">Tidak ada koperasi ditemukan</p>
+  </div>
+ ) : (
+    cooperatives.slice(0, 10).map((coop, idx) => {
+           const isSelected = selectedCoopId === coop.id;
+          const gradients = [
+               "bg-gradient-to-r from-red-500 to-rose-700",
+    "bg-gradient-to-r from-amber-500 to-emerald-600",
+  "bg-gradient-to-r from-blue-500 to-cyan-600",
+      "bg-gradient-to-r from-purple-500 to-pink-600",
+             ];
+      return (
+  <button
+        key={coop.id}
+     onClick={() => setSelectedCoopId(coop.id)}
+        className={`w-full text-left rounded-xl border overflow-hidden transition-all duration-200 cursor-pointer flex flex-col ${
+     isSelected
+         ? "border-black bg-white ring-1 ring-black shadow-md"
+              : "border-gray-100 bg-white hover:border-gray-300 hover:shadow-sm"
+    }`}
+      >
+              {/* Banner Cover representation (Styled CSS Gradient) */}
+      <div className={`h-14 w-full relative ${gradients[idx % gradients.length]} flex items-end p-2`}>
+   {/* Shadow overlay */}
+         <div className="absolute inset-0 bg-black/10" />
+        <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-sm text-[8px] font-black uppercase tracking-wider bg-white/90 text-black shadow-sm">
+  {coop.kode_koperasi}
+      </span>
+          </div>
 
-                      {/* Store Card Info */}
-                      <div className="p-3.5 space-y-2">
-                        <div className="flex items-start justify-between gap-1">
-                          <p className="text-xs font-black text-black leading-tight line-clamp-1">{coop.name}</p>
-                          <span className="px-1.5 py-0.5 rounded-sm text-[9px] font-black bg-emerald-50 text-emerald-700 shrink-0 border border-emerald-100">
-                            {coop.status}
-                          </span>
-                        </div>
+ {/* Store Card Info */}
+      <div className="p-3.5 space-y-2">
+     <div className="flex items-start justify-between gap-1">
+         <p className="text-xs font-black text-black leading-tight line-clamp-1">{coop.name}</p>
+  <span className="px-1.5 py-0.5 rounded-sm text-[9px] font-black bg-emerald-50 text-emerald-700 shrink-0 border border-emerald-100">
+         {coop.status === 'active' ? 'Buka' : 'Tutup'}
+       </span>
+            </div>
 
-                        {/* Store Metadata */}
-                        <div className="flex items-center gap-1.5 text-[10px] text-gray-500">
-                          <span className="flex items-center gap-0.5 text-amber-500 font-bold">★ {coop.rating}</span>
-                          <span>•</span>
-                          <span>{coop.distance} km</span>
-                          <span>•</span>
-                          <span>Rp {coop.deliveryFee.toLocaleString("id-ID")}</span>
-                        </div>
+         {/* Store Metadata */}
+        <div className="flex items-center gap-1.5 text-[10px] text-gray-500">
+  {coop.distance > 0 && (
+        <>
+       <span>{coop.distance.toFixed(1)} km</span>
+      <span>•</span>
+  </>
+            )}
+                 <span>{coop.phone || 'No Phone'}</span>
+                  </div>
 
-                        <p className="text-[10px] text-gray-400 line-clamp-1 pt-1.5 border-t border-gray-50">
-                          {coop.address}
-                        </p>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+  <p className="text-[10px] text-gray-400 line-clamp-1 pt-1.5 border-t border-gray-50">
+    {coop.address || 'Alamat tidak tersedia'}
+          </p>
+      </div>
+  </button>
+          );
+       })
+    )}
+       </div>
             </div>
           )}
         </section>
@@ -1395,12 +1379,8 @@ export default function Home() {
                 <path d="M 0,150 Q 150,150 200,80 T 400,200" stroke="#CBD5E1" strokeWidth="8" fill="none" />
                 <path d="M 200,0 Q 180,120 180,180 T 300,300" stroke="#CBD5E1" strokeWidth="6" fill="none" />
                 
-                {/* Store Pin (Origin) */}
-                <g transform={`translate(${
-                  INITIAL_COOPERATIVES.find((c) => c.id === lastOrderDetails.coopId)?.coords.x || 140
-                }, ${
-                  INITIAL_COOPERATIVES.find((c) => c.id === lastOrderDetails.coopId)?.coords.y || 110
-                })`}>
+    {/* Store Pin (Origin) */}
+<g transform="translate(140, 110)">
                   <circle r="12" fill="#06C167" fillOpacity="0.2" className="animate-pulse" />
                   <circle r="7" fill="#06C167" />
                   <text y="3" fontSize="8" fontWeight="bold" fill="white" textAnchor="middle">S</text>
@@ -1413,20 +1393,16 @@ export default function Home() {
                   <text y="3" fontSize="8" fontWeight="bold" fill="white" textAnchor="middle">H</text>
                 </g>
 
-                {/* Path Dotted Rider track */}
-                {lastOrderDetails && (
-                  <path
-                    d={`M ${
-                      INITIAL_COOPERATIVES.find((c) => c.id === lastOrderDetails.coopId)?.coords.x || 140
-                    } ${
-                      INITIAL_COOPERATIVES.find((c) => c.id === lastOrderDetails.coopId)?.coords.y || 110
-                    } L 180 160`}
-                    stroke="#000000"
-                    strokeWidth="2.5"
-                    strokeDasharray="4 4"
-                    fill="none"
-                  />
-                )}
+ {/* Path Dotted Rider track */}
+             {lastOrderDetails && (
+            <path
+     d="M 140 110 L 180 160"
+         stroke="#000000"
+    strokeWidth="2.5"
+          strokeDasharray="4 4"
+     fill="none"
+         />
+       )}
 
                 {/* Animated Rider Scooter Emoji */}
                 <g transform={`translate(${riderCoords.x}, ${riderCoords.y})`} className="transition-all duration-150">
