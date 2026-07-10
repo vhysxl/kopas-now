@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { getUserTransactions } from "@/server/actions/transactions";
 import OrdersList from "@/components/kopasnow/OrdersList";
+import BottomNav from "@/components/kopasnow/BottomNav";
 
 export default async function OrdersPage() {
   const cookieStore = await cookies();
@@ -32,7 +33,7 @@ export default async function OrdersPage() {
 
   if (!customer) {
     return (
-      <div className="min-h-screen bg-[#F6F6F6] py-8 px-4">
+      <div className="min-h-screen bg-[#F6F6F6] py-8 px-4 pb-24 md:pb-8">
         <div className="max-w-4xl mx-auto">
           <Link
             href="/"
@@ -58,12 +59,13 @@ export default async function OrdersPage() {
             </p>
             <Link
               href="/"
-              className="inline-block px-6 py-2.5 bg-[#CE1126] text-white text-xs font-bold rounded-full hover:bg-[#A00E1C] transition-colors"
+              className="inline-flex items-center justify-center min-h-[52px] px-8 bg-[#CE1126] text-white text-base font-bold rounded-xl hover:bg-[#A00E1C] transition-colors"
             >
               Mulai Belanja
             </Link>
           </div>
         </div>
+        <BottomNav />
       </div>
     );
   }
@@ -76,7 +78,7 @@ export default async function OrdersPage() {
 
   if (!success || error) {
     return (
-      <div className="min-h-screen bg-[#F6F6F6] py-8 px-4">
+      <div className="min-h-screen bg-[#F6F6F6] py-8 px-4 pb-24 md:pb-8">
         <div className="max-w-4xl mx-auto">
           <Link
             href="/"
@@ -105,7 +107,7 @@ export default async function OrdersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F6F6F6] py-8 px-4">
+    <div className="min-h-screen bg-[#F6F6F6] py-8 px-4 pb-24 md:pb-8">
       <div className="max-w-4xl mx-auto">
         <Link
           href="/"
@@ -124,10 +126,11 @@ export default async function OrdersPage() {
           Kembali ke Beranda
         </Link>
         <div className="bg-white rounded-2xl border border-slate-100 p-6">
-          <h1 className="text-2xl font-bold mb-6">Riwayat Pemesanan</h1>
+          <h1 className="text-2xl font-bold mb-6">Pesanan Saya</h1>
           <OrdersList transactions={transactions || []} />
         </div>
       </div>
+      <BottomNav />
     </div>
   );
 }

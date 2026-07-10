@@ -154,6 +154,19 @@ export function formatDistance(km: number): string {
 }
 
 /**
+ * Format distance as travel time in plain language ("bahasa manusia").
+ * Walking ~12 min/km; beyond comfortable walking range, assume motorbike ~3 min/km.
+ */
+export function formatWalkTime(km: number): string {
+  if (km <= 2.5) {
+    const minutes = Math.max(1, Math.round(km * 12));
+    return `±${minutes} menit jalan kaki`;
+  }
+  const minutes = Math.max(5, Math.round(km * 3));
+  return `±${minutes} menit naik motor`;
+}
+
+/**
  * Reverse geocode a latitude and longitude to a location name.
  * Uses OpenStreetMap Nominatim API (Free, No Auth).
  * 

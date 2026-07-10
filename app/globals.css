@@ -12,17 +12,21 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* Aplikasi dirancang light-only: mode gelap otomatis justru merusak
+   keterbacaan bagi pengguna lansia di HP low-end, jadi tidak di-swap. */
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Fokus keyboard/switch-access harus selalu terlihat jelas */
+:focus-visible {
+  outline: 3px solid #ce1126;
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 /* Custom animations for KopasNow Hyperlocal discovery */

@@ -180,6 +180,210 @@ function generateOTP(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
+export type OtpLoginResponse = ActionResponse & {
+  /** true jika nomor belum terdaftar — UI akan meminta nama untuk pendaftaran */
+  isNewUser?: boolean;
+};
+
+/**
+ * Login/daftar tanpa kata sandi — langkah 1: kirim kode OTP lewat WhatsApp.
+ * Memakai infra yang sama dengan reset password (tabel kopasnow_otp + Fonnte),
+ * dengan purpose "login". Nomor yang belum terdaftar tetap dikirimi kode
+ * (pendaftaran terjadi saat verifikasi).
+ */
+export async function requestLoginOTP(
+  prevState: OtpLoginResponse | null,
+  formData: FormData
+): Promise<OtpLoginResponse> {
+  const phoneInput = formData.get("phone") as string;
+
+  if (!phoneInput || phoneInput.trim() === "") {
+    return { error: "Tolong isi nomor HP Anda dulu." };
+  }
+
+  const normalizedPhone = normalizePhone(phoneInput);
+  if (!/^08\d{8,12}$/.test(normalizedPhone)) {
+    return { error: "Nomor HP belum benar. Contoh yang benar: 0812xxxxxxxx" };
+  }
+
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data: customer, error: dbError } = await supabase
+    .from("kopasnow_customers")
+    .select("id")
+    .eq("phone", normalizedPhone)
+    .maybeSingle();
+
+  if (dbError) {
+    return { error: maskError(dbError) };
+  }
+
+  const otpCode = generateOTP();
+  const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // berlaku 5 menit
+
+  const { error: insertError } = await supabase.from("kopasnow_otp").insert({
+    phone: normalizedPhone,
+    otp_code: otpCode,
+    purpose: "login",
+    expires_at: expiresAt.toISOString(),
+  });
+
+  if (insertError) {
+    return { error: maskError(insertError, "Kode belum bisa dibuat. Silakan coba lagi.") };
+  }
+
+  // SEMENTARA (mode uji coba UI): FONNTE_API_KEY belum disambungkan di fase ini,
+  // jadi kode ditampilkan langsung di layar alih-alih dikirim ke WhatsApp asli.
+  // Kode tetap tersimpan sungguhan di kopasnow_otp sehingga verifyLoginOTP tetap
+  // berjalan normal. Hapus blok ini setelah FONNTE_API_KEY dikonfigurasi di fase backend.
+  if (!process.env.FONNTE_API_KEY) {
+    return {
+      success: true,
+      message: `[MODE UJI COBA] WhatsApp belum disambungkan. Kode OTP Anda: ${otpCode}`,
+      isNewUser: !customer,
+    };
+  }
+
+  try {
+    await sendOTPWhatsApp(normalizedPhone, otpCode);
+    return {
+      success: true,
+      message: "Kode sudah dikirim ke WhatsApp Anda.",
+      isNewUser: !customer,
+    };
+  } catch (error) {
+    console.error("Failed to send login OTP via WhatsApp:", error);
+    return {
+      error:
+        "Kode belum bisa dikirim ke WhatsApp. Periksa nomor Anda, lalu coba lagi.",
+    };
+  }
+}
+
+/**
+ * Login/daftar tanpa kata sandi — langkah 2: cocokkan kode OTP lalu buat sesi.
+ * Untuk nomor baru, akun dibuat otomatis (butuh nama). Sesi dibuat lewat
+ * admin generateLink(magiclink) + verifyOtp(token_hash) tanpa kata sandi.
+ */
+export async function verifyLoginOTP(
+  prevState: ActionResponse | null,
+  formData: FormData
+): Promise<ActionResponse> {
+  const phoneInput = formData.get("phone") as string;
+  const otpCode = formData.get("otp") as string;
+  const nama = ((formData.get("nama") as string) || "").trim();
+
+  if (!phoneInput || !otpCode) {
+    return { error: "Tolong isi kode yang dikirim ke WhatsApp Anda." };
+  }
+
+  const normalizedPhone = normalizePhone(phoneInput);
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+
+  // Cocokkan kode OTP (belum dipakai, belum kadaluarsa)
+  const { data: otpRecord, error: otpError } = await supabase
+    .from("kopasnow_otp")
+    .select("*")
+    .eq("phone", normalizedPhone)
+    .eq("otp_code", otpCode)
+    .eq("purpose", "login")
+    .eq("is_used", false)
+    .gt("expires_at", new Date().toISOString())
+    .order("created_at", { ascending: false })
+    .maybeSingle();
+
+  if (otpError) {
+    return { error: maskError(otpError) };
+  }
+
+  if (!otpRecord) {
+    return { error: "Kode salah atau sudah kadaluarsa. Coba kirim ulang kode." };
+  }
+
+  const { error: markUsedError } = await supabase
+    .from("kopasnow_otp")
+    .update({ is_used: true })
+    .eq("id", otpRecord.id);
+
+  if (markUsedError) {
+    return { error: maskError(markUsedError) };
+  }
+
+  const adminClient = createAdminClient();
+
+  // Cari pelanggan; kalau belum ada, daftarkan otomatis
+  const { data: customer, error: customerError } = await adminClient
+    .from("kopasnow_customers")
+    .select("*")
+    .eq("phone", normalizedPhone)
+    .maybeSingle();
+
+  if (customerError) {
+    return { error: maskError(customerError) };
+  }
+
+  let loginEmail: string;
+
+  if (customer) {
+    loginEmail = customer.email || `${normalizedPhone}@phone.kopasnow.com`;
+  } else {
+    if (nama.length < 2) {
+      return { error: "Tolong isi nama lengkap Anda untuk mendaftar." };
+    }
+
+    loginEmail = `${normalizedPhone}@phone.kopasnow.com`;
+    const { data: created, error: createError } =
+      await adminClient.auth.admin.createUser({
+        email: loginEmail,
+        password: crypto.randomUUID(), // akun tanpa sandi — masuk selalu lewat OTP
+        email_confirm: true,
+        user_metadata: { nama, phone: normalizedPhone },
+      });
+
+    if (createError || !created.user) {
+      return { error: maskError(createError, ERROR_MESSAGES.SIGNUP_FAILED) };
+    }
+
+    const { error: profileError } = await adminClient
+      .from("kopasnow_customers")
+      .insert({
+        user_id: created.user.id,
+        nama,
+        email: null,
+        phone: normalizedPhone,
+      });
+
+    if (profileError) {
+      return { error: maskError(profileError, ERROR_MESSAGES.PROFILE_CREATION_FAILED) };
+    }
+  }
+
+  // Buat sesi tanpa kata sandi: magic link di-generate lalu diverifikasi
+  // langsung di server sehingga cookie sesi ikut ter-set
+  const { data: linkData, error: linkError } =
+    await adminClient.auth.admin.generateLink({
+      type: "magiclink",
+      email: loginEmail,
+    });
+
+  if (linkError || !linkData.properties?.hashed_token) {
+    return { error: maskError(linkError, "Gagal masuk. Silakan coba lagi.") };
+  }
+
+  const { error: sessionError } = await supabase.auth.verifyOtp({
+    type: "magiclink",
+    token_hash: linkData.properties.hashed_token,
+  });
+
+  if (sessionError) {
+    return { error: maskError(sessionError, "Gagal masuk. Silakan coba lagi.") };
+  }
+
+  return { success: true, message: "Berhasil masuk!" };
+}
+
 /**
  * Request OTP for password reset
  */

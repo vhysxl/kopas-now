@@ -1,25 +1,16 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useCallback } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap, Circle } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { KoperasiLocation } from "@/utils/helper/geo";
-import { haversineDistance, formatDistance } from "@/utils/helper/geo";
+import { haversineDistance, formatWalkTime } from "@/utils/helper/geo";
 
 // ── Custom marker icons ──────────────────────────────────────
 
 const koperasiIcon = new L.Icon({
   iconUrl: "https://cdn.jsdelivr.net/gh/pointhi/leaflet-color-markers@master/img/marker-icon-red.png",
-  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
-
-const koperasiSelectedIcon = new L.Icon({
-  iconUrl: "https://cdn.jsdelivr.net/gh/pointhi/leaflet-color-markers@master/img/marker-icon-gold.png",
   shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
   iconSize: [25, 41],
   iconAnchor: [12, 41],
@@ -55,14 +46,14 @@ function LocateControl({
   return (
     <button
       onClick={handleLocate}
-      className="absolute bottom-4 right-4 z-[1000] bg-white hover:bg-slate-50 text-slate-700 px-3 py-2.5 rounded-xl shadow-lg border border-slate-200 flex items-center gap-2 text-sm font-semibold transition-all duration-200 hover:shadow-xl cursor-pointer"
-      title="Temukan lokasi saya"
+      className="absolute bottom-4 right-4 z-[1000] min-h-[48px] bg-white hover:bg-slate-50 text-slate-800 px-4 py-3 rounded-xl shadow-lg border-2 border-slate-300 flex items-center gap-2 text-base font-bold transition-all cursor-pointer"
+      title="Tunjukkan posisi saya di peta"
     >
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 text-[#CE1126]">
         <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
         <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
       </svg>
-      Lokasi Saya
+      Posisi Saya
     </button>
   );
 }
@@ -97,38 +88,20 @@ function FitBounds({
 
 interface KoperasiMapProps {
   koperasiList: KoperasiLocation[];
+  userPosition: [number, number] | null;
   onUserLocationChange?: (lat: number, lng: number) => void;
-  selectedId?: string | null;
 }
 
+// Peta tidak lagi meminta izin lokasi sendiri saat dibuka.
+// Izin lokasi dikelola halaman induk lewat kartu persetujuan (priming),
+// lalu posisinya dikirim ke sini sebagai prop.
 export default function KoperasiMap({
   koperasiList,
+  userPosition,
   onUserLocationChange,
-  selectedId,
 }: KoperasiMapProps) {
-  const [userPosition, setUserPosition] = useState<[number, number] | null>(null);
-
-  // Auto-detect user location on mount
-  useEffect(() => {
-    if (!navigator.geolocation) return;
-
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const { latitude, longitude } = pos.coords;
-        setUserPosition([latitude, longitude]);
-        onUserLocationChange?.(latitude, longitude);
-      },
-      (err) => {
-        console.warn("Geolocation error:", err.message);
-        // Fallback: don't set user position, map will center on koperasi
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
-  }, [onUserLocationChange]);
-
   const handleLocate = useCallback(
     (lat: number, lng: number) => {
-      setUserPosition([lat, lng]);
       onUserLocationChange?.(lat, lng);
     },
     [onUserLocationChange]
@@ -171,12 +144,9 @@ export default function KoperasiMap({
             />
             <Marker position={userPosition} icon={userIcon}>
               <Popup>
-                <div className="text-center">
-                  <p className="font-bold text-sm text-slate-800">📍 Lokasi Anda</p>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    {userPosition[0].toFixed(5)}, {userPosition[1].toFixed(5)}
-                  </p>
-                </div>
+                <p className="font-bold text-base text-slate-800 text-center">
+                  📍 Anda di sini
+                </p>
               </Popup>
             </Marker>
           </>
@@ -184,7 +154,6 @@ export default function KoperasiMap({
 
         {/* Koperasi markers */}
         {koperasiList.map((koperasi) => {
-          const isSelected = koperasi.id === selectedId;
           const distance = userPosition
             ? haversineDistance(userPosition[0], userPosition[1], koperasi.lat, koperasi.lng)
             : null;
@@ -193,30 +162,27 @@ export default function KoperasiMap({
             <Marker
               key={koperasi.id}
               position={[koperasi.lat, koperasi.lng]}
-              icon={isSelected ? koperasiSelectedIcon : koperasiIcon}
-              opacity={isSelected ? 1 : 0.85}
-              zIndexOffset={isSelected ? 1000 : 0}
+              icon={koperasiIcon}
             >
               <Popup>
-                <div className="min-w-[200px]">
-                  <div className="flex items-start gap-2 mb-1.5">
-                    <div>
-                      <p className="font-bold text-sm text-slate-800 leading-tight">
-                        {koperasi.nama}
-                      </p>
-                      <p className="text-[10px] text-slate-400 font-mono mt-0.5">
-                        {koperasi.kode_koperasi}
-                      </p>
-                    </div>
-                  </div>
+                <div className="min-w-[220px] space-y-1.5">
+                  <p className="font-bold text-base text-slate-800 leading-tight">
+                    {koperasi.nama}
+                  </p>
                   {koperasi.alamat && (
-                    <p className="text-xs text-slate-600 mb-1">📍 {koperasi.alamat}</p>
+                    <p className="text-sm text-slate-600">📍 {koperasi.alamat}</p>
                   )}
                   {distance !== null && (
-                    <p className="text-xs font-semibold text-blue-600">
-                      🚶 {formatDistance(distance)} dari lokasi Anda
+                    <p className="text-sm font-semibold text-slate-700">
+                      🚶 {formatWalkTime(distance)}
                     </p>
                   )}
+                  <a
+                    href={`/koperasi/${koperasi.id}`}
+                    className="!text-white block w-full text-center bg-[#CE1126] font-bold text-sm rounded-lg px-3 py-2.5 mt-1"
+                  >
+                    Lihat Barang di Sini
+                  </a>
                 </div>
               </Popup>
             </Marker>
@@ -225,9 +191,6 @@ export default function KoperasiMap({
 
         <LocateControl onLocate={handleLocate} />
       </MapContainer>
-
-      {/* Map overlay gradient at bottom for visual polish */}
-      <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white/20 to-transparent pointer-events-none z-[400]" />
     </div>
   );
 }

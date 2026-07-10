@@ -4,60 +4,52 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useUserStore } from "@/store/useUserStore";
-import { signOutAction } from "@/server/actions/auth";
+import { useCartStore, cartTotalItems } from "@/store/useCartStore";
 import { getKoperasiList } from "@/server/actions/getKoperasi";
 import { getAllActiveProducts, type KopasnowProduct } from "@/server/actions/getProducts";
 import { sortByDistance, getLocationName } from "@/utils/helper/geo";
 import type { KoperasiLocation } from "@/utils/helper/geo";
 import KoperasiList from "@/components/kopasnow/KoperasiList";
+import BottomNav from "@/components/kopasnow/BottomNav";
 
-// Dynamic import — Leaflet requires `window`, cannot SSR
+// Dynamic import — Leaflet requires `window`, cannot SSR.
+// Peta hanya dimuat saat pengguna menekan "Lihat Peta" (hemat kuota & RAM HP low-end).
 const KoperasiMap = dynamic(
   () => import("@/components/kopasnow/KoperasiMap"),
   {
     ssr: false,
     loading: () => (
       <div className="w-full h-full rounded-2xl bg-slate-100 animate-pulse flex items-center justify-center border border-slate-200">
-        <div className="text-center">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 mx-auto text-slate-300 mb-2">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z" />
-          </svg>
-          <p className="text-xs text-slate-400 font-medium">Memuat peta...</p>
-        </div>
+        <p className="text-base text-slate-500 font-medium">Sedang membuka peta...</p>
       </div>
     ),
   }
 );
 
+// Status izin lokasi disimpan supaya kartu persetujuan tidak muncul berulang
+const LOCATION_CONSENT_KEY = "kopasnow-izin-lokasi";
+type LocationConsent = "unknown" | "granted" | "denied";
+
 export default function Home() {
   const user = useUserStore((state) => state.user);
   const customer = useUserStore((state) => state.customer);
   const isLoading = useUserStore((state) => state.isLoading);
+  const cartItems = useCartStore((state) => state.items);
+  const cartHydrated = useCartStore((state) => state._hasHydrated);
 
-  // States from original page
   const [koperasiList, setKoperasiList] = useState<KoperasiLocation[]>([]);
-  const [sortedList, setSortedList] = useState<(KoperasiLocation & { distance: number })[]>([]);
   const [productsByKoperasi, setProductsByKoperasi] = useState<Record<string, KopasnowProduct[]>>({});
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [locationName, setLocationName] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [locationConsent, setLocationConsent] = useState<LocationConsent>("unknown");
+  const [locationError, setLocationError] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showMap, setShowMap] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
-  // UI States from new layout
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [isCartOpen, setIsCartOpen] = useState(false);
-  const [checkoutSuccess, setCheckoutSuccess] = useState(false);
-  const [lastOrderDetails, setLastOrderDetails] = useState<any>(null);
-  const [deliveryMethod, setDeliveryMethod] = useState<"delivery" | "pickup">("delivery");
-  const [riderProgress, setRiderProgress] = useState(0);
-
-  // Derived user data
-  const nama = customer?.nama || user?.email?.split('@')[0] || "Anggota";
-  const email = user?.email || "-";
-  const phone = customer?.phone || "-";
-  const joinedDate = customer?.created_at ? new Date(customer.created_at).toLocaleDateString("id-ID") : "-";
-  const cartTotalItems = 0; // Mockup
+  const nama = customer?.nama || user?.email?.split("@")[0] || "Anggota";
+  const totalCartItems = cartHydrated ? cartTotalItems(cartItems) : 0;
 
   // Fetch koperasi and products data on mount
   useEffect(() => {
@@ -75,7 +67,6 @@ export default function Home() {
       }
 
       if (productsResult.data) {
-        // Group products by koperasi_id
         const grouped = productsResult.data.reduce((acc, product) => {
           if (!acc[product.koperasi_id]) {
             acc[product.koperasi_id] = [];
@@ -85,59 +76,83 @@ export default function Home() {
         }, {} as Record<string, KopasnowProduct[]>);
         setProductsByKoperasi(grouped);
       }
-      
+
       setIsFetching(false);
     }
     fetchData();
   }, []);
 
-  // Re-sort when user location changes
-  useEffect(() => {
+  // Urutkan dari yang terdekat begitu lokasi pengguna diketahui
+  const sortedList = useMemo(() => {
     if (userLocation && koperasiList.length > 0) {
-      const sorted = sortByDistance(koperasiList, userLocation[0], userLocation[1]);
-      setSortedList(sorted);
-    } else {
-      // No user location — show all with 0 distance
-      setSortedList(koperasiList.map((k) => ({ ...k, distance: 0 })));
+      return sortByDistance(koperasiList, userLocation[0], userLocation[1]);
     }
+    return koperasiList.map((k) => ({ ...k, distance: 0 }));
   }, [koperasiList, userLocation]);
 
   const handleUserLocationChange = useCallback(async (lat: number, lng: number) => {
     setUserLocation([lat, lng]);
-    // Reverse geocode in background
     const locName = await getLocationName(lat, lng);
     if (locName) {
       setLocationName(locName);
     }
   }, []);
 
-  // Simulate rider progress when checkout is successful
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (checkoutSuccess) {
-      setRiderProgress(0);
-      interval = setInterval(() => {
-        setRiderProgress((prev) => {
-          if (prev >= 100) {
-            clearInterval(interval);
-            return 100;
-          }
-          return prev + 1;
-        });
-      }, 150);
-    } else {
-      setRiderProgress(0);
+  const requestLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      setLocationError("HP Anda tidak mendukung fitur lokasi.");
+      return;
     }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [checkoutSuccess]);
+    setLocationError(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        localStorage.setItem(LOCATION_CONSENT_KEY, "granted");
+        setLocationConsent("granted");
+        handleUserLocationChange(pos.coords.latitude, pos.coords.longitude);
+      },
+      () => {
+        localStorage.setItem(LOCATION_CONSENT_KEY, "denied");
+        setLocationConsent("denied");
+        setLocationError(
+          "Lokasi belum menyala. Koperasi tetap bisa dilihat, tapi tidak urut dari yang terdekat."
+        );
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }, [handleUserLocationChange]);
 
-  // Compute rider coordinates along route (simplified for now)
-  const riderCoords = useMemo(() => {
-    // Simplified animation - can be enhanced with actual coordinates later
-    return { x: 180 + (riderProgress * 0.5), y: 160 - (riderProgress * 0.3) };
-  }, [riderProgress]);
+  const handleDeclineLocation = useCallback(() => {
+    localStorage.setItem(LOCATION_CONSENT_KEY, "denied");
+    setLocationConsent("denied");
+  }, []);
+
+  // Pulihkan keputusan izin lokasi; jika sudah pernah setuju,
+  // langsung minta posisi tanpa menampilkan kartu persetujuan lagi
+  useEffect(() => {
+    async function restoreConsent() {
+      const saved = (await Promise.resolve(
+        localStorage.getItem(LOCATION_CONSENT_KEY)
+      )) as LocationConsent | null;
+      if (saved === "granted") {
+        setLocationConsent("granted");
+        requestLocation();
+      } else if (saved === "denied") {
+        setLocationConsent("denied");
+      }
+    }
+    restoreConsent();
+  }, [requestLocation]);
+
+  // Saring daftar koperasi berdasarkan kata pencarian (nama koperasi / nama barang)
+  const filteredList = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return sortedList;
+    return sortedList.filter((k) => {
+      if (k.nama.toLowerCase().includes(query)) return true;
+      const products = productsByKoperasi[k.id] || [];
+      return products.some((p) => p.nama_produk.toLowerCase().includes(query));
+    });
+  }, [sortedList, productsByKoperasi, searchQuery]);
 
   if (isLoading) {
     return (
@@ -152,409 +167,235 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F6F6F6] font-sans selection:bg-[#CE1126] selection:text-white flex flex-col relative overflow-x-hidden text-black">
-      {/* Top Banner (Merah Putih Decor) */}
-      <div className="w-full h-1 flex fixed top-0 left-0 z-50">
+    <div className="min-h-screen bg-[#F6F6F6] font-sans flex flex-col text-slate-900 pb-24 md:pb-0">
+      {/* Garis bendera Merah Putih */}
+      <div className="w-full h-1.5 flex fixed top-0 left-0 z-50">
         <div className="w-1/2 bg-[#CE1126]" />
-        <div className="w-1/2 bg-white" />
+        <div className="w-1/2 bg-white border-b border-slate-200" />
       </div>
 
       {/* Header */}
-      <header className="bg-white border-b border-gray-100 shadow-sm sticky top-1 z-40">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-          {/* Logo & Delivery Toggle */}
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-1 cursor-pointer" onClick={() => setSelectedId(null)}>
-              <span className="text-2xl font-black tracking-tight text-black">Kopas</span>
-              <span className="text-2xl font-black tracking-tight text-[#CE1126]">Now</span>
-              <span className="bg-[#CE1126] text-white px-1.5 py-0.5 rounded-sm font-bold text-[9px] uppercase tracking-wider ml-1">
-                Mart
-              </span>
-            </div>
-
-            {/* Delivery vs Pickup Toggle (Uber Eats Style) */}
-            <div className="hidden sm:flex bg-[#F3F3F3] p-1 rounded-full border border-gray-100">
-              <button
-                onClick={() => setDeliveryMethod("delivery")}
-                className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${
-                  deliveryMethod === "delivery"
-                    ? "bg-black text-white shadow-sm"
-                    : "text-gray-500 hover:text-black"
-                }`}
-              >
-                Kirim
-              </button>
-              <button
-                onClick={() => setDeliveryMethod("pickup")}
-                className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${
-                  deliveryMethod === "pickup"
-                    ? "bg-black text-white shadow-sm"
-                    : "text-gray-500 hover:text-black"
-                }`}
-              >
-                Ambil
-              </button>
-            </div>
-          </div>
-
-     {/* Hyperlocal Address Selector */}
-        <div className="hidden md:flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#F3F3F3] hover:bg-[#EAEAEA] transition-all cursor-pointer text-xs font-bold text-black">
-            <span className="text-sm">📍</span>
-            <span className="truncate max-w-[200px]">
-              {locationName}
+      <header className="bg-white border-b border-slate-200 shadow-sm sticky top-1.5 z-40">
+        <div className="max-w-2xl lg:max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+          <Link href="/" className="flex flex-col">
+            <span className="text-2xl font-black tracking-tight leading-none">
+              <span className="text-slate-900">Kopas</span>
+              <span className="text-[#CE1126]">Now</span>
             </span>
-          <svg
-   className="w-3 h-3 text-gray-500 shrink-0"
-     fill="none"
-     stroke="currentColor"
-        strokeWidth="2.5"
-     viewBox="0 0 24 24"
-   >
-        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-            </svg>
- </div>
+            <span className="text-sm font-semibold text-slate-500">Koperasi Desa</span>
+          </Link>
 
-          {/* Right Header Navigation */}
-          <div className="flex items-center gap-3">
-            {/* Riwayat Pemesanan */}
+          {/* Navigasi desktop: selalu ikon + label */}
+          <nav className="hidden md:flex items-center gap-2">
             <Link
               href="/orders"
-              className="relative px-4 py-2 bg-white hover:bg-slate-50 text-black border border-slate-200 rounded-full transition-all duration-200 cursor-pointer flex items-center gap-2 text-xs font-bold"
+              className="min-h-[48px] px-4 bg-white hover:bg-slate-50 text-slate-800 border-2 border-slate-200 rounded-xl flex items-center gap-2 text-base font-bold transition-colors"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={2}
-                stroke="currentColor"
-                className="w-4 h-4"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z"
-                />
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
+              Pesanan Saya
             </Link>
-
-            {/* Cart Trigger */}
-            <button
-              onClick={() => setIsCartOpen(true)}
-              className="relative px-4 py-2 bg-black hover:bg-neutral-800 text-white rounded-full transition-all duration-200 cursor-pointer flex items-center gap-2 text-xs font-bold"
+            <Link
+              href="/keranjang"
+              className="relative min-h-[48px] px-4 bg-[#CE1126] hover:bg-[#A50E1E] text-white rounded-xl flex items-center gap-2 text-base font-bold transition-colors"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={2.5}
-                stroke="currentColor"
-                className="w-4 h-4"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z"
-                />
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.2} stroke="currentColor" className="w-5 h-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
               </svg>
-              <span>Keranjang</span>
-              {cartTotalItems > 0 && (
-                <span className="w-5 h-5 bg-[#CE1126] text-white text-[10px] font-black rounded-full flex items-center justify-center border border-black animate-scale-in">
-                  {cartTotalItems}
+              Keranjang
+              {totalCartItems > 0 && (
+                <span className="min-w-[24px] h-6 px-1.5 bg-white text-[#CE1126] text-sm font-black rounded-full flex items-center justify-center">
+                  {totalCartItems}
                 </span>
               )}
-            </button>
-
-            {/* Profile Avatar Trigger */}
-            <button
-              onClick={() => setIsProfileOpen(!isProfileOpen)}
-              className="w-8 h-8 rounded-full bg-red-50 border border-red-100 flex items-center justify-center text-sm font-bold text-[#CE1126] hover:bg-[#CE1126] hover:text-white transition-all cursor-pointer shadow-sm"
+            </Link>
+            <Link
+              href="/akun"
+              className="min-h-[48px] px-4 bg-white hover:bg-slate-50 text-slate-800 border-2 border-slate-200 rounded-xl flex items-center gap-2 text-base font-bold transition-colors"
             >
-              {nama.charAt(0).toUpperCase()}
-            </button>
-          </div>
+              <span className="w-7 h-7 rounded-full bg-red-50 border border-red-100 flex items-center justify-center text-sm font-bold text-[#CE1126]">
+                {nama.charAt(0).toUpperCase()}
+              </span>
+              Akun
+            </Link>
+          </nav>
+
+          {/* Di HP, keranjang cepat di header; menu lain lewat navigasi bawah */}
+          <Link
+            href="/keranjang"
+            className="md:hidden relative w-12 h-12 bg-[#CE1126] text-white rounded-xl flex items-center justify-center"
+            aria-label={`Keranjang, ${totalCartItems} barang`}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.2} stroke="currentColor" className="w-6 h-6">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
+            </svg>
+            {totalCartItems > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 min-w-[22px] h-[22px] px-1 bg-white text-[#CE1126] text-sm font-black rounded-full flex items-center justify-center border-2 border-[#CE1126]">
+                {totalCartItems}
+              </span>
+            )}
+          </Link>
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-6 flex flex-col justify-start">
-        {isProfileOpen ? (
-          /* Profile / Welcome Card */
-          <div className="bg-white rounded-3xl shadow-xl shadow-slate-100 border border-slate-100 overflow-hidden my-6">
-            <div className="p-8 sm:p-12 text-center max-w-2xl mx-auto">
-              {/* User Avatar Circle */}
-              <div className="w-20 h-20 rounded-full bg-red-50 text-[#CE1126] flex items-center justify-center mx-auto mb-6 border border-red-100 shadow-inner">
-                <span className="text-2xl font-bold uppercase tracking-wider">
-                  {nama.charAt(0)}
-                </span>
-              </div>
+      {/* Main Content */}
+      <main className="flex-1 max-w-2xl lg:max-w-4xl w-full mx-auto px-4 py-6 flex flex-col gap-5">
+        {/* Sapaan & judul tugas */}
+        <div>
+          <p className="text-base text-slate-600">Halo, <strong>{nama}</strong>!</p>
+          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight mt-0.5">
+            Mau belanja apa hari ini?
+          </h1>
+        </div>
 
-              <h2 className="text-3xl font-extrabold text-slate-800 tracking-tight">
-                Selamat Datang, <span className="text-[#CE1126]">{nama}</span>!
-              </h2>
-              <p className="text-slate-500 mt-2 text-sm sm:text-base">
-                Terima kasih telah menjadi bagian dari Koperasi Merah Putih KopasNow. Akun Anda telah
-                terverifikasi secara digital di platform kami.
-              </p>
+        {/* Pencarian barang */}
+        <div className="relative">
+          <span className="absolute inset-y-0 left-4 flex items-center text-slate-400 pointer-events-none">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.2} stroke="currentColor" className="w-6 h-6">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+            </svg>
+          </span>
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Cari barang, contoh: beras, minyak"
+            className="w-full h-14 pl-13 pr-4 bg-white border-2 border-slate-200 focus:border-[#CE1126] rounded-xl text-base text-slate-900 placeholder-slate-400 outline-none"
+          />
+        </div>
 
-              <div className="w-16 h-1 bg-[#CE1126] rounded-full mx-auto my-8" />
-
-              {/* Profile Info Details Grid */}
-              <div className="bg-slate-50 rounded-2xl p-6 text-left border border-slate-100 space-y-4">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-200/60 pb-2">
-                  Informasi Keanggotaan
-                </h3>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-0.5">
-                    <span className="text-xs text-slate-400 block font-medium">Nama Anggota</span>
-                    <span className="text-sm font-semibold text-slate-800">{nama}</span>
-                  </div>
-
-                  <div className="space-y-0.5">
-                    <span className="text-xs text-slate-400 block font-medium">Status</span>
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                      Aktif
-                    </span>
-                  </div>
-
-                  <div className="space-y-0.5">
-                    <span className="text-xs text-slate-400 block font-medium">Email</span>
-                    <span className="text-sm font-semibold text-slate-800 break-all">{email}</span>
-                  </div>
-
-                  <div className="space-y-0.5">
-                    <span className="text-xs text-slate-400 block font-medium">No. Telepon / HP</span>
-                    <span className="text-sm font-semibold text-slate-800">{phone}</span>
-                  </div>
-
-                  <div className="space-y-0.5 sm:col-span-2">
-                    <span className="text-xs text-slate-400 block font-medium">Tanggal Bergabung</span>
-                    <span className="text-sm font-semibold text-slate-800">{joinedDate}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Platform Shortcuts Info */}
-              <div className="mt-8 text-xs text-slate-400 font-medium">
-                Sistem Core Koperasi ID: <span className="font-mono text-slate-500">{user.id}</span>
-              </div>
-              
-              {/* Logout Button */}
-              <form action={signOutAction} className="mt-8">
-                <button
-                  type="submit"
-                  className="w-full bg-[#CE1126] hover:bg-[#A50E1E] text-white py-3 px-4 font-bold text-sm rounded-xl transition-all cursor-pointer text-center shadow-xs"
-                >
-                  Keluar Akun
-                </button>
-              </form>
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-6">
-            {/* Section Title */}
-            <div>
-              <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">
-                Temukan <span className="text-[#CE1126]">Koperasi</span> Terdekat
-              </h1>
-              <p className="text-sm text-slate-500 mt-1">
-                {locationName ? (
-                  <span>Anda di <strong>{locationName}</strong>, ada {sortedList.length} koperasi disini</span>
-                ) : userLocation ? (
-                  <span>{sortedList.length} koperasi ditemukan di sekitar Anda</span>
-                ) : (
-                  <span>Aktifkan lokasi untuk melihat jarak ke koperasi</span>
-                )}
-              </p>
-            </div>
-
-            {/* Map */}
-            <div className="w-full h-[50vh] min-h-[320px] max-h-[500px]">
-              {isFetching ? (
-                <div className="w-full h-full rounded-2xl bg-slate-100 animate-pulse flex items-center justify-center border border-slate-200">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#CE1126] mx-auto mb-2"></div>
-                    <p className="text-xs text-slate-400 font-medium">Memuat data koperasi...</p>
-                  </div>
-                </div>
-              ) : error ? (
-                <div className="w-full h-full rounded-2xl bg-red-50 flex items-center justify-center border border-red-200">
-                  <div className="text-center px-6">
-                    <p className="text-sm font-semibold text-red-700">Gagal memuat peta</p>
-                    <p className="text-xs text-red-500 mt-1">{error}</p>
-                  </div>
-                </div>
-              ) : (
-                <KoperasiMap
-                  koperasiList={koperasiList}
-                  onUserLocationChange={handleUserLocationChange}
-                  selectedId={selectedId}
-                />
-              )}
-            </div>
-
-            {/* Koperasi List */}
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 text-[#CE1126]">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-                  </svg>
-                  Daftar Koperasi
+        {/* Kartu persetujuan lokasi (priming sebelum dialog izin browser) */}
+        {locationConsent === "unknown" && (
+          <div className="bg-white rounded-2xl border-2 border-slate-200 p-5">
+            <div className="flex items-start gap-3">
+              <span className="text-3xl">📍</span>
+              <div className="flex-1">
+                <h2 className="text-lg font-bold text-slate-900">
+                  Boleh kami tahu lokasi Anda?
                 </h2>
-                {userLocation && (
-                  <span className="text-[10px] text-slate-400 font-medium bg-slate-100 px-2 py-1 rounded-lg">
-                    Urut berdasarkan jarak terdekat
-                  </span>
-                )}
+                <p className="text-base text-slate-600 mt-1">
+                  Supaya kami bisa menunjukkan koperasi yang paling dekat dari
+                  rumah Anda. HP Anda akan bertanya — pilih <strong>Izinkan</strong>.
+                </p>
               </div>
-
-              {isFetching ? (
-                <div className="space-y-3">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-20 rounded-2xl bg-slate-100 animate-pulse border border-slate-200" />
-                  ))}
-                </div>
-              ) : (
-                <KoperasiList
-                  koperasiList={sortedList}
-                  productsByKoperasi={productsByKoperasi}
-                  selectedId={selectedId}
-                  onSelect={(id) => setSelectedId(id === selectedId ? null : id)}
-                />
-              )}
+            </div>
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={requestLocation}
+                className="flex-1 min-h-[52px] bg-[#CE1126] hover:bg-[#A50E1E] text-white rounded-xl text-base font-bold transition-colors cursor-pointer"
+              >
+                Ya, Boleh
+              </button>
+              <button
+                onClick={handleDeclineLocation}
+                className="flex-1 min-h-[52px] bg-white hover:bg-slate-50 text-slate-700 border-2 border-slate-300 rounded-xl text-base font-bold transition-colors cursor-pointer"
+              >
+                Nanti Saja
+              </button>
             </div>
           </div>
         )}
-      </main>
 
-      {/* Checkout Success Screen with Real-time Scooter Animation map (Uber style tracking) */}
-      {checkoutSuccess && lastOrderDetails && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="relative w-full max-w-md bg-white rounded-3xl p-6 text-center shadow-2xl border border-gray-100 animate-fade-in space-y-5 text-black">
-            
-            {/* Header info */}
-            <div className="space-y-1">
-              <div className="w-12 h-12 bg-red-50 text-[#CE1126] rounded-full flex items-center justify-center mx-auto border border-red-100 shadow-inner">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={3}
-                  stroke="currentColor"
-                  className="w-6 h-6 animate-pulse"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                </svg>
-              </div>
-              <h3 className="text-base font-black text-black tracking-tight mt-2">Pesanan Sedang Diproses</h3>
-              <p className="text-[10px] text-red-600 font-extrabold uppercase tracking-wider">
-                Pengantaran Hyperlocal Real-Time
-              </p>
-            </div>
+        {/* Status lokasi */}
+        {locationConsent === "granted" && userLocation && (
+          <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
+            <span className="text-xl">📍</span>
+            <p className="text-base text-emerald-900">
+              {locationName ? (
+                <>Lokasi Anda: <strong>{locationName}</strong>. Koperasi diurutkan dari yang paling dekat.</>
+              ) : (
+                <>Lokasi ditemukan. Koperasi diurutkan dari yang paling dekat.</>
+              )}
+            </p>
+          </div>
+        )}
 
-            {/* Interactive Live Tracking Map with Rider Scooter emoji animation */}
-            <div className="bg-[#E5E9F0] h-44 rounded-2xl relative overflow-hidden shadow-inner border border-gray-200">
-              <svg className="w-full h-full" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
-                {/* Background Roads / Map outline */}
-                <path d="M 0,150 Q 150,150 200,80 T 400,200" stroke="#CBD5E1" strokeWidth="8" fill="none" />
-                <path d="M 200,0 Q 180,120 180,180 T 300,300" stroke="#CBD5E1" strokeWidth="6" fill="none" />
-                
-    {/* Store Pin (Origin) */}
-<g transform="translate(140, 110)">
-               <circle r="12" fill="#CE1126" fillOpacity="0.2" className="animate-pulse" />
-  <circle r="7" fill="#CE1126" />
-                  <text y="3" fontSize="8" fontWeight="bold" fill="white" textAnchor="middle">S</text>
-                </g>
-
-                {/* User Location (Destination) */}
-                <g transform="translate(180, 160)">
-                  <circle r="12" fill="#3B82F6" fillOpacity="0.2" />
-                  <circle r="7" fill="#3B82F6" />
-                  <text y="3" fontSize="8" fontWeight="bold" fill="white" textAnchor="middle">H</text>
-                </g>
-
- {/* Path Dotted Rider track */}
-             {lastOrderDetails && (
-            <path
-     d="M 140 110 L 180 160"
-         stroke="#000000"
-    strokeWidth="2.5"
-          strokeDasharray="4 4"
-     fill="none"
-         />
-       )}
-
-                {/* Animated Rider Scooter Emoji */}
-                <g transform={`translate(${riderCoords.x}, ${riderCoords.y})`} className="transition-all duration-150">
-                  <circle r="11" fill="white" shadow-md="true" />
-                  <text y="4" fontSize="11" textAnchor="middle" className="animate-bounce">🛵</text>
-                </g>
-              </svg>
-
-              {/* Float Map Overlay Progress */}
-              <div className="absolute top-2 left-2 bg-black/90 text-white px-2.5 py-1 rounded text-[8px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-md">
-                <span className="w-1.5 h-1.5 bg-[#CE1126] rounded-full animate-ping" />
-                <span>KURIR: {riderProgress}% TRANSIT</span>
-              </div>
-            </div>
-
-            {/* Dynamic Status Progress Tracker based on riderProgress */}
-            <div className="text-left bg-slate-50 border border-gray-100 p-4 rounded-2xl text-xs font-bold space-y-3">
-              <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-                <span className="text-gray-400">Asal Toko</span>
-                <span className="text-black font-extrabold">{lastOrderDetails.coopName}</span>
-              </div>
-              <div className="space-y-1">
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Ringkasan Barang</span>
-                <div className="max-h-24 overflow-y-auto space-y-1 font-medium text-slate-600">
-                  {lastOrderDetails.items.map((item: any, idx: number) => (
-                    <div key={idx} className="flex justify-between">
-                      <span>• {item.name}</span>
-                      <span className="font-bold text-slate-700">x{item.qty}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Progress Bar */}
-              <div className="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden mt-2">
-                <div
-                  className="bg-[#CE1126] h-full transition-all duration-150"
-                  style={{ width: `${riderProgress}%` }}
-                />
-              </div>
-
-              {/* Bill Details */}
-              <div className="flex justify-between border-t border-gray-150 pt-2.5 font-black text-black">
-                <span>Total Bayar</span>
-                <span className="text-[#CE1126]">Rp {lastOrderDetails.total.toLocaleString("id-ID")}</span>
-              </div>
-            </div>
-
-            {/* WA Notification simulation details */}
-            <div className="p-3 bg-red-50/50 border border-red-100 rounded-xl text-left text-[10px] text-red-800 leading-normal flex items-start gap-2.5 font-medium">
-              <span className="text-base leading-none">💬</span>
-              <p>
-                <strong>[Simulasi Notifikasi]</strong> Struk pembelian digital telah dikirim ke nomor WhatsApp pengurus Koperasi dan Kurir via Fonnte Gateway API.
-              </p>
-            </div>
-
+        {locationConsent === "denied" && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+            <p className="text-base text-amber-900">
+              {locationError || "Lokasi belum menyala, jadi koperasi tidak urut dari yang terdekat."}
+            </p>
             <button
-              onClick={() => setCheckoutSuccess(false)}
-              className="w-full bg-black hover:bg-neutral-800 text-white py-3.5 font-bold text-xs rounded-full transition-all cursor-pointer"
+              onClick={requestLocation}
+              className="mt-2 min-h-[48px] px-5 bg-white hover:bg-amber-100 text-amber-900 border-2 border-amber-300 rounded-xl text-base font-bold transition-colors cursor-pointer"
             >
-              Tutup & Belanja Lagi
+              Nyalakan Lokasi
             </button>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Daftar koperasi (konten utama) */}
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-bold text-slate-900">
+              {searchQuery.trim()
+                ? `Koperasi yang menjual "${searchQuery.trim()}"`
+                : userLocation
+                ? "Koperasi Paling Dekat"
+                : "Daftar Koperasi"}
+            </h2>
+          </div>
+
+          {isFetching ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-40 rounded-2xl bg-slate-200/60 animate-pulse" />
+              ))}
+            </div>
+          ) : error ? (
+            <div className="bg-white rounded-2xl border-2 border-red-200 p-6 text-center">
+              <div className="text-4xl mb-2">😕</div>
+              <p className="text-lg font-bold text-slate-900">Daftar koperasi belum bisa dimuat</p>
+              <p className="text-base text-slate-600 mt-1">
+                Periksa sambungan internet Anda, lalu tekan tombol di bawah.
+              </p>
+              <button
+                onClick={() => window.location.reload()}
+                className="mt-4 min-h-[52px] px-8 bg-[#CE1126] hover:bg-[#A50E1E] text-white rounded-xl text-base font-bold transition-colors cursor-pointer"
+              >
+                Coba Lagi
+              </button>
+            </div>
+          ) : (
+            <KoperasiList
+              koperasiList={filteredList}
+              productsByKoperasi={productsByKoperasi}
+              hasLocation={!!userLocation}
+              searchQuery={searchQuery}
+            />
+          )}
+        </section>
+
+        {/* Peta: pilihan, bukan keharusan */}
+        {!isFetching && !error && koperasiList.length > 0 && (
+          <section>
+            <button
+              onClick={() => setShowMap((v) => !v)}
+              className="w-full min-h-[52px] bg-white hover:bg-slate-50 text-slate-800 border-2 border-slate-300 rounded-xl text-base font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+            >
+              <span className="text-xl">🗺️</span>
+              {showMap ? "Tutup Peta" : "Lihat Letak Koperasi di Peta"}
+            </button>
+            {showMap && (
+              <div className="w-full h-[45vh] min-h-[300px] max-h-[460px] mt-3">
+                <KoperasiMap
+                  koperasiList={koperasiList}
+                  userPosition={userLocation}
+                  onUserLocationChange={handleUserLocationChange}
+                />
+              </div>
+            )}
+          </section>
+        )}
+      </main>
 
       {/* Footer */}
-      <footer className="py-6 border-t border-gray-100 text-center text-[10px] text-gray-400 bg-white shrink-0 mt-8 font-medium">
-        &copy; 2026 KopasNow. Semua hak cipta dilindungi undang-undang.
+      <footer className="py-6 border-t border-slate-200 text-center text-sm text-slate-500 bg-white shrink-0 mt-8">
+        &copy; 2026 KopasNow — Koperasi Desa Merah Putih
       </footer>
+
+      <BottomNav />
     </div>
   );
 }
