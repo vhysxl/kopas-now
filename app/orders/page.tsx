@@ -6,6 +6,7 @@ import Link from "next/link";
 import { getUserTransactions } from "@/server/actions/transactions";
 import OrdersList from "@/components/kopasnow/OrdersList";
 import BottomNav from "@/components/kopasnow/BottomNav";
+import NotificationBell from "@/components/kopasnow/NotificationBell";
 
 export default async function OrdersPage() {
   const cookieStore = await cookies();
@@ -109,22 +110,25 @@ export default async function OrdersPage() {
   return (
     <div className="min-h-screen bg-[#F6F6F6] py-8 px-4 pb-24 md:pb-8">
       <div className="max-w-4xl mx-auto">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-[#CE1126] transition-colors mb-6"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={2}
-            stroke="currentColor"
-            className="w-4 h-4"
+        <div className="flex items-center justify-between gap-3 mb-6">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 min-h-[48px] text-base font-bold text-slate-600 hover:text-[#CE1126] transition-colors"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-          Kembali ke Beranda
-        </Link>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={2}
+              stroke="currentColor"
+              className="w-5 h-5"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Kembali ke Beranda
+          </Link>
+          <NotificationBell />
+        </div>
         <div className="bg-white rounded-2xl border border-slate-100 p-6">
           <h1 className="text-2xl font-bold mb-6">Pesanan Saya</h1>
           <OrdersList transactions={transactions || []} />

@@ -40,12 +40,10 @@ export const useUserStore = create<UserState & UserActions>()((set) => ({
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         set({ user });
-        const { data: customer } = await supabase
-          .from("kopasnow_customers")
-          .select("*")
-          .eq("user_id", user.id)
-          .maybeSingle();
-        set({ customer });
+        // Lewat server action: RLS kopasnow_customers tidak mengizinkan SELECT
+        // dari client, jadi query langsung akan selalu mengembalikan null.
+        const { getCurrentCustomer } = await import("@/server/actions/customer");
+        set({ customer: await getCurrentCustomer() });
       } else {
         set({ user: null, customer: null });
       }

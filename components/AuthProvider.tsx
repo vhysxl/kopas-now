@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { createClient } from "@/utils/supabase/client";
+import { getCurrentCustomer } from "@/server/actions/customer";
 import { useUserStore, Customer } from "@/store/useUserStore";
 import { User } from "@supabase/supabase-js";
 
@@ -44,12 +45,9 @@ export default function AuthProvider({
       } else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
         if (session?.user) {
           setUser(session.user);
-          const { data: customer } = await supabase
-            .from("kopasnow_customers")
-            .select("*")
-            .eq("user_id", session.user.id)
-            .maybeSingle();
-          setCustomer(customer);
+          // Lewat server action: RLS kopasnow_customers tidak mengizinkan SELECT
+          // dari client, jadi query langsung akan selalu mengembalikan null.
+          setCustomer(await getCurrentCustomer());
           setLoading(false);
         }
       }

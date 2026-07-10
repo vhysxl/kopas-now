@@ -1,15 +1,23 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo, type FormEvent } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useUserStore } from "@/store/useUserStore";
 import { useCartStore, cartTotalItems } from "@/store/useCartStore";
+import { useLocationStore } from "@/store/useLocationStore";
 import { getKoperasiList } from "@/server/actions/getKoperasi";
 import { getAllActiveProducts, type KopasnowProduct } from "@/server/actions/getProducts";
-import { sortByDistance, getLocationName, geocodeCity, formatDistance } from "@/utils/helper/geo";
+import { sortByDistance, getLocationName, formatDistance } from "@/utils/helper/geo";
 import type { KoperasiLocation } from "@/utils/helper/geo";
 import BottomNav from "@/components/kopasnow/BottomNav";
+import LocationIndicator from "@/components/kopasnow/LocationIndicator";
+import SearchBar from "@/components/kopasnow/SearchBar";
+import NotificationBell from "@/components/kopasnow/NotificationBell";
+import CartConflictDialog from "@/components/kopasnow/CartConflictDialog";
+import { useAddToCart } from "@/hooks/useAddToCart";
+import { displayName } from "@/utils/helper/account";
+import { koperasiImage } from "@/utils/helper/koperasiImage";
 
 // Dynamic import — Leaflet requires `window`, cannot SSR.
 // Peta dimuat saat pengguna membuka peta (hemat kuota & RAM HP low-end).
@@ -24,9 +32,6 @@ const KoperasiMap = dynamic(
     ),
   }
 );
-
-const LOCATION_CONSENT_KEY = "kopasnow-izin-lokasi";
-type LocationConsent = "unknown" | "granted" | "denied";
 
 // Saat titik acuan diketahui, hanya koperasi dalam radius ini yang ditampilkan
 const NEARBY_RADIUS_KM = 5;
@@ -84,38 +89,33 @@ export default function Home() {
   const cartItems = useCartStore((state) => state.items);
   const cartHydrated = useCartStore((state) => state._hasHydrated);
 
+  // Titik acuan pengguna — satu sumber bersama lintas halaman
+  const userLat = useLocationStore((s) => s.lat);
+  const userLng = useLocationStore((s) => s.lng);
+  const locationLabel = useLocationStore((s) => s.label);
+  const locationSource = useLocationStore((s) => s.source);
+  const setLocation = useLocationStore((s) => s.setLocation);
+  const setLocationLabel = useLocationStore((s) => s.setLabel);
+
+  const { addToCart, pending, confirmReplace, cancelReplace, cartKoperasiName } =
+    useAddToCart();
+
   const [koperasiList, setKoperasiList] = useState<KoperasiLocation[]>([]);
   const [productsByKoperasi, setProductsByKoperasi] = useState<Record<string, KopasnowProduct[]>>({});
   const [allProducts, setAllProducts] = useState<KopasnowProduct[]>([]);
-  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
-  const [locationName, setLocationName] = useState<string | null>(null);
-  const [locationConsent, setLocationConsent] = useState<LocationConsent>("unknown");
-  const [locationError, setLocationError] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-
-  // Pencarian kota manual — selalu tersedia, termasuk saat GPS sudah aktif
-  const [cityQuery, setCityQuery] = useState("");
-  const [citySearchLocation, setCitySearchLocation] = useState<[number, number] | null>(null);
-  const [citySearchLabel, setCitySearchLabel] = useState<string | null>(null);
-  const [isGeocodingCity, setIsGeocodingCity] = useState(false);
-  const [cityError, setCityError] = useState<string | null>(null);
 
   // Koperasi yang sedang disorot (marker kuning di peta)
   const [selectedKoperasiId, setSelectedKoperasiId] = useState<string | null>(null);
   // Pengguna memilih melihat semua koperasi, mengabaikan batas radius
   const [ignoreRadius, setIgnoreRadius] = useState(false);
+  // Menekan peta memindahkan titik acuan, bukan memilih koperasi
+  const [pickMode, setPickMode] = useState(false);
 
-  const nama = customer?.nama || user?.email?.split("@")[0] || "Anggota";
+  const nama = displayName(user, customer);
   const totalCartItems = cartHydrated ? cartTotalItems(cartItems) : 0;
-
-  const showToast = useCallback((msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
-  }, []);
 
   // Fetch koperasi and products data on mount
   useEffect(() => {
@@ -149,12 +149,15 @@ export default function Home() {
     fetchData();
   }, []);
 
-  // Titik acuan jarak: kota yang diketik manual menang, karena itu pilihan
-  // sadar pengguna untuk melihat daerah lain. Kalau tidak ada, pakai GPS.
-  // Kalau dua-duanya kosong, semua koperasi ditampilkan tanpa urutan jarak.
-  const effectiveLocation = citySearchLocation ?? userLocation;
+  // Titik acuan dipegang store bersama; aksi terakhir pengguna yang menang
+  // (GPS, cari kota, atau geser penanda). Tanpa titik acuan, semua koperasi
+  // ditampilkan tanpa urutan jarak.
+  const effectiveLocation = useMemo<[number, number] | null>(
+    () => (userLat !== null && userLng !== null ? [userLat, userLng] : null),
+    [userLat, userLng]
+  );
   const hasLocation = !!effectiveLocation;
-  const isViewingOtherCity = !!citySearchLocation;
+  const isViewingOtherCity = locationSource === "city";
 
   // Urutkan dari yang terdekat begitu titik acuan diketahui
   const sortedList = useMemo(() => {
@@ -174,183 +177,74 @@ export default function Home() {
   const noKoperasiInRadius =
     hasLocation && !ignoreRadius && sortedList.length > 0 && radiusList.length === 0;
 
-  const handleUserLocationChange = useCallback(async (lat: number, lng: number) => {
-    setUserLocation([lat, lng]);
-    // Menemukan posisi sendiri berarti kembali ke lokasi sendiri:
-    // batalkan pencarian kota supaya titik acuannya tidak tertahan di kota lain.
-    setCitySearchLocation(null);
-    setCitySearchLabel(null);
-    setCityQuery("");
-    const locName = await getLocationName(lat, lng);
-    if (locName) {
-      setLocationName(locName);
-    }
-  }, []);
+  // Radius zona yang digambar di peta. Kalau koperasi terjauh dalam zona
+  // masih di bawah batas, lingkarannya dirapatkan ke koperasi terjauh
+  // (dilebihkan 100 m) supaya peta tidak ter-zoom out sia-sia.
+  const zoneRadiusKm = useMemo(() => {
+    if (!hasLocation || ignoreRadius) return undefined;
+    if (radiusList.length === 0) return NEARBY_RADIUS_KM;
+    const farthest = radiusList[radiusList.length - 1].distance;
+    return Math.min(NEARBY_RADIUS_KM, farthest + 0.1);
+  }, [hasLocation, ignoreRadius, radiusList]);
 
-  const requestLocation = useCallback(() => {
-    if (!navigator.geolocation) {
-      setLocationError("HP Anda tidak mendukung fitur lokasi.");
-      return;
-    }
-    setLocationError(null);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        localStorage.setItem(LOCATION_CONSENT_KEY, "granted");
-        setLocationConsent("granted");
-        handleUserLocationChange(pos.coords.latitude, pos.coords.longitude);
-      },
-      () => {
-        localStorage.setItem(LOCATION_CONSENT_KEY, "denied");
-        setLocationConsent("denied");
-        setLocationError(
-          "Lokasi belum menyala. Koperasi tetap bisa dilihat, tapi tidak urut dari yang terdekat."
-        );
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
-  }, [handleUserLocationChange]);
+  // Dipanggil tombol "Posisi Saya" di peta. Menemukan posisi sendiri berarti
+  // titik acuan baru, jadi sorotan koperasi ikut dilepas.
+  const handleUserLocationChange = useCallback(
+    async (lat: number, lng: number) => {
+      setLocation({ lat, lng, source: "gps" });
+      setSelectedKoperasiId(null);
+      const locName = await getLocationName(lat, lng);
+      if (locName) setLocationLabel(locName);
+    },
+    [setLocation, setLocationLabel]
+  );
 
-  const handleDeclineLocation = useCallback(() => {
-    localStorage.setItem(LOCATION_CONSENT_KEY, "denied");
-    setLocationConsent("denied");
-  }, []);
+  // Menandai titik sendiri langsung di peta koperasi terdekat
+  const handlePickPoint = useCallback(
+    async (lat: number, lng: number) => {
+      setLocation({ lat, lng, source: "manual" });
+      setSelectedKoperasiId(null);
+      setIgnoreRadius(false);
+      setPickMode(false);
 
-  // Cari koperasi terdekat dari kota yang diketik manual.
-  // Tersedia kapan saja, termasuk saat GPS aktif, supaya pengguna bisa
-  // melihat koperasi di daerah lain (mis. kampung halaman).
-  const handleCitySearch = useCallback(async (e: FormEvent) => {
-    e.preventDefault();
-    const query = cityQuery.trim();
-    if (!query) return;
-
-    setIsGeocodingCity(true);
-    setCityError(null);
-    const result = await geocodeCity(query);
-    setIsGeocodingCity(false);
-
-    if (!result) {
-      setCitySearchLocation(null);
-      setCitySearchLabel(null);
-      setCityError(`Kota "${query}" tidak ditemukan. Coba nama kota lain, contoh: Cikarang.`);
-      return;
-    }
-
-    setCitySearchLocation([result.lat, result.lng]);
-    setCitySearchLabel(result.label);
-    setSelectedKoperasiId(null);
-    setIgnoreRadius(false);
-  }, [cityQuery]);
-
-  const handleClearCitySearch = useCallback(() => {
-    setCityQuery("");
-    setCitySearchLocation(null);
-    setCitySearchLabel(null);
-    setCityError(null);
-    setSelectedKoperasiId(null);
-    setIgnoreRadius(false);
-  }, []);
+      const locName = await getLocationName(lat, lng);
+      if (locName) setLocationLabel(locName);
+    },
+    [setLocation, setLocationLabel]
+  );
 
   const handleSelectKoperasi = useCallback((id: string) => {
     setSelectedKoperasiId((prev) => (prev === id ? null : id));
   }, []);
 
-  // Pulihkan keputusan izin lokasi; jika sudah pernah setuju,
-  // langsung minta posisi tanpa menampilkan kartu persetujuan lagi
-  useEffect(() => {
-    async function restoreConsent() {
-      const saved = localStorage.getItem(LOCATION_CONSENT_KEY) as LocationConsent | null;
-      if (saved === "granted") {
-        setLocationConsent("granted");
-        requestLocation();
-      } else if (saved === "denied") {
-        setLocationConsent("denied");
-      }
-    }
-    restoreConsent();
-  }, [requestLocation]);
-
-  // Saring daftar koperasi (yang sudah dibatasi radius) berdasarkan kategori dan pencarian
+  // Saring daftar koperasi (yang sudah dibatasi radius) berdasarkan kategori.
+  // Pencarian kata kunci kini ditangani halaman /cari, bukan di beranda.
   const filteredList = useMemo(() => {
-    let list = radiusList;
-
-    // Saring berdasarkan kategori aktif
-    if (activeCategory) {
-      list = list.filter((k) => {
-        const products = productsByKoperasi[k.id] || [];
-        return products.some((p) => matchCategory(p.kategori_produk, activeCategory));
-      });
-    }
-
-    // Saring berdasarkan kata kunci pencarian
-    const query = searchQuery.trim().toLowerCase();
-    if (!query) return list;
-
-    return list.filter((k) => {
-      if (k.nama.toLowerCase().includes(query)) return true;
+    if (!activeCategory) return radiusList;
+    return radiusList.filter((k) => {
       const products = productsByKoperasi[k.id] || [];
-      return products.some((p) => p.nama_produk.toLowerCase().includes(query));
+      return products.some((p) => matchCategory(p.kategori_produk, activeCategory));
     });
-  }, [radiusList, productsByKoperasi, searchQuery, activeCategory]);
+  }, [radiusList, productsByKoperasi, activeCategory]);
 
-  // Saring rekomendasi produk
+  // Rekomendasi produk, disaring kategori saja
   const recommendedProducts = useMemo(() => {
-    let list = allProducts;
-
-    // Filter kategori
-    if (activeCategory) {
-      list = list.filter((p) => matchCategory(p.kategori_produk, activeCategory));
-    }
-
-    // Filter pencarian
-    const query = searchQuery.trim().toLowerCase();
-    if (query) {
-      list = list.filter((p) => p.nama_produk.toLowerCase().includes(query));
-    }
-
+    const list = activeCategory
+      ? allProducts.filter((p) => matchCategory(p.kategori_produk, activeCategory))
+      : allProducts;
     return list.slice(0, 8);
-  }, [allProducts, activeCategory, searchQuery]);
+  }, [allProducts, activeCategory]);
 
   const handleCategoryClick = (categoryKey: string) => {
     setActiveCategory((prev) => (prev === categoryKey ? null : categoryKey));
   };
 
-  // Tambahkan item ke keranjang (harga selalu harga asli — tidak ada data diskon di database)
+  // Tambahkan item ke keranjang. Konfirmasi ganti koperasi ditangani
+  // CartConflictDialog, bukan window.confirm bawaan browser.
   const handleAddToCart = (product: KopasnowProduct) => {
-    const currentKoperasiId = useCartStore.getState().koperasiId;
-    const currentKoperasiName = useCartStore.getState().koperasiName;
-    const addItem = useCartStore.getState().addItem;
-    const clearCart = useCartStore.getState().clear;
-
-    const coopName = koperasiList.find((k) => k.id === product.koperasi_id)?.nama || "Koperasi";
-    const price = parseFloat(product.harga_produk);
-
-    if (currentKoperasiId && currentKoperasiId !== product.koperasi_id) {
-      const confirmClear = window.confirm(
-        `Keranjang Anda saat ini berisi barang dari "${currentKoperasiName}". Apakah Anda ingin mengosongkan keranjang untuk membeli barang dari "${coopName}"?`
-      );
-      if (confirmClear) {
-        clearCart();
-        addItem(product.koperasi_id, coopName, {
-          productId: product.id_produk,
-          name: product.nama_produk,
-          price,
-          unit: product.satuan_produk || "pcs",
-          photoUrl: product.foto_url,
-          stock: product.stok_tersedia,
-        });
-        showToast(`Keranjang dikosongkan & ${product.nama_produk} ditambahkan!`);
-      }
-    } else {
-      addItem(product.koperasi_id, coopName, {
-        productId: product.id_produk,
-        name: product.nama_produk,
-        price,
-        unit: product.satuan_produk || "pcs",
-        photoUrl: product.foto_url,
-        stock: product.stok_tersedia,
-      });
-      showToast(`Berhasil menambahkan ${product.nama_produk} ke keranjang!`);
-    }
+    const coopName =
+      koperasiList.find((k) => k.id === product.koperasi_id)?.nama || "Koperasi";
+    addToCart(product, { id: product.koperasi_id, nama: coopName });
   };
 
   if (isLoading) {
@@ -377,39 +271,25 @@ export default function Home() {
               KopasNow
             </Link>
             {/* Search Bar */}
-            <div className="hidden md:flex flex-1 max-w-xl relative">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
-              <input
-                className="w-full bg-surface-container-lowest border border-outline-variant rounded-full py-2 pl-10 pr-4 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-on-surface"
-                placeholder="Cari produk atau koperasi..."
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
+            <SearchBar className="hidden md:block flex-1 max-w-xl" />
           </div>
           {/* Right Actions */}
           <div className="flex items-center gap-stack-sm md:gap-stack-md">
-            <button
-              onClick={requestLocation}
-              className="flex items-center gap-1 text-secondary hover:text-primary transition-colors hover:bg-surface-container-low px-3 py-2 rounded-full hidden md:flex cursor-pointer"
-            >
-              <span className="material-symbols-outlined">location_on</span>
-              <span className="font-label-lg text-label-lg">{(locationName || citySearchLabel || "Pilih Lokasi").slice(0, 18)}</span>
-              <span className="material-symbols-outlined text-[16px]">expand_more</span>
-            </button>
+            <LocationIndicator />
             <div className="flex gap-2">
-              <Link href="/keranjang" className="p-2 text-secondary hover:text-primary transition-colors hover:bg-surface-container-low rounded-full relative">
-                <span className="material-symbols-outlined">shopping_cart</span>
+              <Link
+                href="/keranjang"
+                aria-label={`Keranjang, ${totalCartItems} barang`}
+                className="p-2 min-h-[48px] min-w-[48px] flex items-center justify-center text-secondary hover:text-primary transition-colors hover:bg-surface-container-low rounded-full relative"
+              >
+                <span className="material-symbols-outlined" aria-hidden>shopping_cart</span>
                 {totalCartItems > 0 && (
-                  <span className="absolute top-0 right-0 min-w-[18px] h-[18px] bg-primary text-on-primary text-[10px] font-bold rounded-full flex items-center justify-center">
+                  <span className="absolute top-0 right-0 min-w-[20px] h-[20px] px-1 bg-primary text-on-primary text-xs font-bold rounded-full flex items-center justify-center">
                     {totalCartItems}
                   </span>
                 )}
               </Link>
-              <button className="p-2 text-secondary hover:text-primary transition-colors hover:bg-surface-container-low rounded-full">
-                <span className="material-symbols-outlined">notifications</span>
-              </button>
+              <NotificationBell />
             </div>
             <Link href="/orders" className="hidden md:block bg-primary hover:bg-primary-container text-on-primary font-label-lg text-label-lg px-6 py-2 rounded-full transition-colors font-semibold">
               Pesanan Saya
@@ -429,17 +309,10 @@ export default function Home() {
         <main className="flex-1 p-margin-page md:p-stack-lg overflow-x-hidden max-w-screen-xl mx-auto w-full">
           {/* Welcome User & Mobile Search */}
           <div className="mb-6 md:hidden">
-            <p className="text-sm text-secondary">Halo, <strong>{nama}</strong>!</p>
+            <p className="text-base text-secondary">Halo, <strong>{nama}</strong>!</p>
             <h1 className="text-headline-md text-headline-sm font-bold text-on-surface mt-1">Mau belanja apa hari ini?</h1>
-            <div className="relative mt-3">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
-              <input
-                className="w-full bg-surface-container-lowest border border-outline-variant rounded-xl py-3 pl-10 pr-4 focus:outline-none focus:border-primary text-on-surface"
-                placeholder="Cari beras, minyak, koperasi..."
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+            <div className="mt-3">
+              <SearchBar placeholder="Cari beras, minyak, koperasi..." />
             </div>
           </div>
 
@@ -463,115 +336,61 @@ export default function Home() {
             </div>
           </section>
 
-          {/* Kartu Persetujuan Lokasi */}
-          {locationConsent === "unknown" && (
-            <div className="bg-surface-container-lowest border-2 border-outline-variant rounded-xl p-5 mb-6 shadow-sm animate-fade-in">
-              <div className="flex items-start gap-4">
-                <span className="material-symbols-outlined text-primary text-3xl">location_on</span>
-                <div className="flex-1">
-                  <h2 className="font-headline-sm text-headline-sm text-on-surface">Boleh kami tahu lokasi Anda?</h2>
-                  <p className="text-secondary text-sm mt-1">
-                    Supaya kami bisa menunjukkan koperasi yang paling dekat dari rumah Anda. Pilih <strong>Izinkan</strong> pada konfirmasi sistem.
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-3 mt-4 justify-end">
-                <button
-                  onClick={handleDeclineLocation}
-                  className="px-5 py-2.5 bg-surface border border-outline rounded-full text-secondary font-label-lg text-sm transition-colors cursor-pointer"
-                >
-                  Nanti Saja
-                </button>
-                <button
-                  onClick={requestLocation}
-                  className="px-6 py-2.5 bg-primary hover:bg-primary-container text-on-primary rounded-full font-label-lg text-sm transition-colors cursor-pointer"
-                >
-                  Ya, Izinkan
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Cari kota — tersedia kapan saja, termasuk saat GPS sudah aktif */}
-          <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-4 mb-6 shadow-sm">
-            {!userLocation && locationConsent === "denied" && locationError && (
-              <p className="text-secondary text-sm mb-3 flex items-start gap-1.5">
-                <span className="material-symbols-outlined text-[18px] text-on-surface-variant">info</span>
-                {locationError}
-              </p>
-            )}
-            <form onSubmit={handleCitySearch} className="flex flex-col sm:flex-row gap-2">
-              <div className="relative flex-1">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">location_city</span>
-                <input
-                  type="text"
-                  value={cityQuery}
-                  onChange={(e) => setCityQuery(e.target.value)}
-                  placeholder={
-                    userLocation
-                      ? "Lihat koperasi di kota lain, contoh: Bandung"
-                      : "Cari koperasi terdekat dari kota Anda, contoh: Cikarang"
-                  }
-                  className="w-full bg-surface border border-outline-variant rounded-full py-2.5 pl-10 pr-4 focus:outline-none focus:border-primary text-on-surface text-sm"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={isGeocodingCity || !cityQuery.trim()}
-                className="px-6 py-2.5 bg-primary hover:bg-primary-container text-on-primary rounded-full font-label-lg text-sm font-bold transition-colors disabled:opacity-60 cursor-pointer"
-              >
-                {isGeocodingCity ? "Mencari..." : "Cari"}
-              </button>
-            </form>
-            {cityError && (
-              <p className="text-error text-sm mt-2">{cityError}</p>
-            )}
-            {citySearchLabel && !cityError && (
-              <div className="flex items-center justify-between gap-2 mt-2">
-                <p className="text-tertiary text-sm font-semibold">
-                  Menampilkan koperasi terdekat dari <strong>{citySearchLabel}</strong>.
-                </p>
-                <button
-                  onClick={handleClearCitySearch}
-                  className="text-secondary text-xs font-bold hover:underline cursor-pointer shrink-0"
-                >
-                  {userLocation ? "Kembali ke lokasi saya" : "Hapus"}
-                </button>
-              </div>
-            )}
-          </div>
-
           {/* Koperasi Terdekat (Split Layout Peta & Daftar) */}
           <section className="mb-section-gap">
             <div className="flex items-center justify-between gap-3 mb-stack-md flex-wrap">
               <h2 className="font-headline-md text-headline-md text-on-surface">
                 {activeCategory
                   ? `Koperasi Kategori "${activeCategory.toUpperCase()}"`
-                  : isViewingOtherCity
-                  ? `Koperasi Terdekat dari ${citySearchLabel}`
-                  : userLocation
+                  : isViewingOtherCity && locationLabel
+                  ? `Koperasi Terdekat dari ${locationLabel}`
+                  : hasLocation
                   ? "Koperasi Terdekat dari Lokasi Anda"
                   : "Semua Koperasi"}
               </h2>
-              {hasLocation && (
-                <span className="text-secondary text-xs font-bold bg-surface-container px-3 py-1 rounded-full">
-                  {ignoreRadius
-                    ? "Semua koperasi"
-                    : `Dalam radius ${NEARBY_RADIUS_KM} km`}
-                </span>
-              )}
+              <div className="flex items-center gap-2 flex-wrap">
+                {hasLocation && (
+                  <span className="text-secondary text-sm font-bold bg-surface-container px-3 py-1 rounded-full">
+                    {ignoreRadius || !zoneRadiusKm
+                      ? "Semua koperasi"
+                      : `Dalam radius ${formatDistance(zoneRadiusKm)}`}
+                  </span>
+                )}
+                {/* Menandai titik memakai peta di bawah — tidak membuka peta baru */}
+                <button
+                  onClick={() => setPickMode((v) => !v)}
+                  aria-pressed={pickMode}
+                  className={`min-h-[48px] px-4 rounded-full text-base font-bold flex items-center gap-1.5 transition-colors cursor-pointer border-2 ${
+                    pickMode
+                      ? "bg-primary text-on-primary border-primary"
+                      : "bg-surface text-on-surface border-outline-variant hover:border-primary/40"
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[20px]" aria-hidden>
+                    {pickMode ? "close" : "add_location_alt"}
+                  </span>
+                  {pickMode ? "Batal menandai" : "Tandai titik sendiri"}
+                </button>
+              </div>
             </div>
+
+            {pickMode && (
+              <p className="text-base text-secondary bg-primary/5 border border-primary/20 rounded-xl px-4 py-3 mb-stack-md">
+                Tekan peta di bawah, tepat di tempat Anda berada. Daftar koperasi akan
+                langsung diurutkan dari titik itu.
+              </p>
+            )}
 
             {/* Tidak ada koperasi dalam radius — beri jalan keluar */}
             {noKoperasiInRadius && (
               <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-4 mb-stack-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <p className="text-secondary text-sm">
+                <p className="text-secondary text-base">
                   Tidak ada koperasi dalam radius {NEARBY_RADIUS_KM} km dari{" "}
-                  <strong>{citySearchLabel || locationName || "lokasi Anda"}</strong>.
+                  <strong>{locationLabel || "lokasi Anda"}</strong>.
                 </p>
                 <button
                   onClick={() => setIgnoreRadius(true)}
-                  className="px-5 py-2.5 bg-primary hover:bg-primary-container text-on-primary rounded-full text-sm font-bold transition-colors cursor-pointer shrink-0"
+                  className="px-5 min-h-[48px] bg-primary hover:bg-primary-container text-on-primary rounded-full text-base font-bold transition-colors cursor-pointer shrink-0"
                 >
                   Tampilkan Semua Koperasi
                 </button>
@@ -586,14 +405,18 @@ export default function Home() {
                     koperasiList={radiusList}
                     userPosition={effectiveLocation}
                     positionLabel={
-                      isViewingOtherCity
-                        ? `📍 Pusat pencarian: ${citySearchLabel}`
+                      isViewingOtherCity && locationLabel
+                        ? `📍 Pusat pencarian: ${locationLabel}`
+                        : locationSource === "manual"
+                        ? "📍 Titik yang Anda tandai"
                         : "📍 Anda di sini"
                     }
-                    radiusKm={hasLocation && !ignoreRadius ? NEARBY_RADIUS_KM : undefined}
+                    radiusKm={zoneRadiusKm}
                     selectedId={selectedKoperasiId}
                     onSelectKoperasi={handleSelectKoperasi}
                     onUserLocationChange={handleUserLocationChange}
+                    pickMode={pickMode}
+                    onPickPoint={handlePickPoint}
                   />
                 </div>
               </div>
@@ -615,16 +438,15 @@ export default function Home() {
                   <div className="text-center py-12 flex flex-col items-center justify-center h-full">
                     <span className="material-symbols-outlined text-4xl text-secondary mb-2">storefront</span>
                     <p className="font-headline-sm text-headline-sm text-on-surface">Koperasi tidak ditemukan</p>
-                    <p className="text-secondary text-sm mt-1">Coba sesuaikan kata pencarian atau bersihkan filter.</p>
-                    {(activeCategory || searchQuery) && (
+                    <p className="text-secondary text-base mt-1">
+                      Belum ada koperasi pada kategori ini di sekitar Anda.
+                    </p>
+                    {activeCategory && (
                       <button
-                        onClick={() => {
-                          setActiveCategory(null);
-                          setSearchQuery("");
-                        }}
-                        className="mt-4 text-sm text-primary font-bold hover:underline"
+                        onClick={() => setActiveCategory(null)}
+                        className="mt-4 min-h-[48px] px-4 text-base text-primary font-bold hover:underline cursor-pointer"
                       >
-                        Bersihkan Filter
+                        Tampilkan Semua Kategori
                       </button>
                     )}
                   </div>
@@ -647,25 +469,31 @@ export default function Home() {
                           aria-pressed={isSelected}
                           className="flex gap-4 w-full text-left cursor-pointer"
                         >
-                          <div className={`w-16 h-16 rounded-lg shrink-0 flex items-center justify-center border ${
-                            isSelected ? "bg-primary text-on-primary border-primary" : "bg-primary-fixed border-primary/20"
-                          }`}>
-                            <span className={`text-lg font-bold ${isSelected ? "text-on-primary" : "text-primary"}`}>
-                              {koperasi.nama.charAt(0).toUpperCase()}
-                            </span>
+                          <div
+                            className={`w-16 h-16 rounded-lg shrink-0 overflow-hidden border ${
+                              isSelected ? "border-primary" : "border-primary/20"
+                            }`}
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={koperasiImage(koperasi.id, 128, 128)}
+                              alt=""
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                            />
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex justify-between items-start gap-2">
                               <h3 className="font-headline-sm text-headline-sm text-on-surface line-clamp-1">{koperasi.nama}</h3>
                               {koperasi.status === "active" ? (
-                                <span className="bg-tertiary-container/20 text-tertiary font-label-sm px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0">Buka</span>
+                                <span className="bg-tertiary-container/20 text-tertiary px-2 py-0.5 rounded-full text-sm font-bold shrink-0">Buka</span>
                               ) : (
-                                <span className="bg-outline-variant text-secondary font-label-sm px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0">Tutup</span>
+                                <span className="bg-outline-variant text-secondary px-2 py-0.5 rounded-full text-sm font-bold shrink-0">Tutup</span>
                               )}
                             </div>
-                            <p className="text-secondary text-xs mt-1 line-clamp-1">{koperasi.alamat || "Jl. Desa Utama"}</p>
-                            <div className="flex items-center gap-1 mt-2 text-on-surface-variant text-[11px] font-bold">
-                              <span className="material-symbols-outlined text-[14px]">location_on</span>
+                            <p className="text-secondary text-base mt-1 line-clamp-1">{koperasi.alamat || "Alamat belum dicatat"}</p>
+                            <div className="flex items-center gap-1 mt-2 text-on-surface-variant text-sm font-bold">
+                              <span className="material-symbols-outlined text-[16px]" aria-hidden>location_on</span>
                               <span>{hasLocation && koperasi.distance > 0 ? formatDistance(koperasi.distance) : "Jarak tidak diketahui"}</span>
                               {isSelected && (
                                 <>
@@ -677,32 +505,12 @@ export default function Home() {
                           </div>
                         </button>
 
-                        {/* Dynamic Products Search Hint inside card */}
-                        {(() => {
-                          const products = productsByKoperasi[koperasi.id] || [];
-                          const query = searchQuery.trim().toLowerCase();
-                          const matched = query ? products.filter((p) => p.nama_produk.toLowerCase().includes(query)) : [];
-                          if (matched.length === 0) return null;
-                          return (
-                            <div className="mt-2.5 pt-2 border-t border-dashed border-surface-variant flex flex-wrap gap-1.5">
-                              {matched.slice(0, 2).map((prod) => (
-                                <span key={prod.id_produk} className="bg-primary/5 text-primary border border-primary/10 rounded-full px-2.5 py-0.5 text-[10px] font-bold">
-                                  {prod.nama_produk} (Rp {parseInt(prod.harga_produk).toLocaleString("id-ID")})
-                                </span>
-                              ))}
-                              {matched.length > 2 && (
-                                <span className="text-[10px] text-secondary py-0.5 font-bold">+{matched.length - 2} produk lainnya</span>
-                              )}
-                            </div>
-                          );
-                        })()}
-
                         {/* Pindah halaman hanya lewat tombol yang jelas */}
                         <Link
                           href={`/koperasi/${koperasi.id}`}
-                          className="mt-3 w-full min-h-[44px] bg-primary hover:bg-primary-container text-on-primary rounded-full text-sm font-bold flex items-center justify-center gap-1.5 transition-colors"
+                          className="mt-3 w-full min-h-[48px] bg-primary hover:bg-primary-container text-on-primary rounded-full text-base font-bold flex items-center justify-center gap-1.5 transition-colors"
                         >
-                          <span className="material-symbols-outlined text-[18px]">storefront</span>
+                          <span className="material-symbols-outlined text-[20px]" aria-hidden>storefront</span>
                           Belanja di Sini
                         </Link>
                       </div>
@@ -758,7 +566,7 @@ export default function Home() {
               <div className="bg-surface-container-lowest border border-surface-variant rounded-xl p-8 text-center flex flex-col items-center">
                 <span className="material-symbols-outlined text-4xl text-secondary mb-2">shopping_bag</span>
                 <p className="font-bold text-on-surface">Produk tidak ditemukan</p>
-                <p className="text-secondary text-sm mt-1">Belum ada produk di kategori ini atau kata pencarian Anda.</p>
+                <p className="text-secondary text-base mt-1">Belum ada produk di kategori ini.</p>
               </div>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-gutter-grid md:gap-stack-md">
@@ -771,33 +579,39 @@ export default function Home() {
                       key={prod.id_produk}
                       className="bg-surface-container-lowest border border-surface-variant rounded-xl overflow-hidden hover:shadow-md transition-all group flex flex-col"
                     >
-                      <div className="aspect-square w-full relative bg-surface-container-low overflow-hidden flex items-center justify-center">
-                        {prod.foto_url ? (
-                          <img
-                            alt={prod.nama_produk}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            src={prod.foto_url}
-                          />
-                        ) : (
-                          <span className="material-symbols-outlined text-5xl text-on-surface-variant">shopping_basket</span>
-                        )}
-                      </div>
-                      <div className="p-3 flex flex-col flex-1">
-                        <h3 className="font-body-md text-body-md text-on-surface line-clamp-2 mb-1 font-semibold text-sm leading-snug">
-                          {prod.nama_produk}
-                        </h3>
-                        <p className="text-secondary text-xs mb-3 font-medium">{coopName}</p>
-                        <div className="mt-auto flex items-center justify-between">
-                          <p className="font-headline-sm text-headline-sm text-on-surface text-sm">
-                            Rp {priceNum.toLocaleString("id-ID")}
-                          </p>
-                          <button
-                            onClick={() => handleAddToCart(prod)}
-                            className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center hover:bg-primary hover:text-on-primary transition-colors cursor-pointer"
-                          >
-                            <span className="material-symbols-outlined text-[20px]">add</span>
-                          </button>
+                      {/* Menekan foto/nama membuka detail; tombol + tetap jalur cepat */}
+                      <Link href={`/produk/${prod.id_produk}`} className="flex flex-col">
+                        <div className="aspect-square w-full relative bg-surface-container-low overflow-hidden flex items-center justify-center">
+                          {prod.foto_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              alt={prod.nama_produk}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              src={prod.foto_url}
+                              loading="lazy"
+                            />
+                          ) : (
+                            <span className="material-symbols-outlined text-5xl text-on-surface-variant" aria-hidden>shopping_basket</span>
+                          )}
                         </div>
+                        <div className="px-3 pt-3">
+                          <h3 className="text-on-surface line-clamp-2 mb-1 font-semibold text-base leading-snug">
+                            {prod.nama_produk}
+                          </h3>
+                          <p className="text-secondary text-sm mb-3 font-medium">{coopName}</p>
+                        </div>
+                      </Link>
+                      <div className="px-3 pb-3 mt-auto flex items-center justify-between gap-2">
+                        <p className="font-headline-sm text-on-surface text-base font-bold">
+                          Rp {priceNum.toLocaleString("id-ID")}
+                        </p>
+                        <button
+                          onClick={() => handleAddToCart(prod)}
+                          aria-label={`Tambah ${prod.nama_produk} ke keranjang`}
+                          className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center hover:bg-primary hover:text-on-primary transition-colors cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-[24px]" aria-hidden>add</span>
+                        </button>
                       </div>
                     </div>
                   );
@@ -808,12 +622,15 @@ export default function Home() {
         </main>
       </div>
 
-      {/* Floating Toast Notification */}
-      {toastMessage && (
-        <div className="fixed bottom-24 md:bottom-6 right-4 z-50 bg-[#1b1c1c] text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-2 animate-fade-in border border-surface-variant">
-          <span className="material-symbols-outlined text-tertiary text-[20px]" data-weight="fill">check_circle</span>
-          <span className="text-sm font-semibold">{toastMessage}</span>
-        </div>
+      {/* Konfirmasi ganti koperasi (keranjang hanya boleh dari satu koperasi) */}
+      {pending && (
+        <CartConflictDialog
+          currentKoperasiName={cartKoperasiName}
+          nextKoperasiName={pending.koperasi.nama}
+          productName={pending.product.nama_produk}
+          onConfirm={confirmReplace}
+          onCancel={cancelReplace}
+        />
       )}
 
       {/* Footer */}

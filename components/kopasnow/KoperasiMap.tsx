@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap, Circle } from "react-leaflet";
+import { useEffect, useCallback, useRef } from "react";
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents, Circle } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { KoperasiLocation } from "@/utils/helper/geo";
@@ -28,17 +28,29 @@ const userIcon = buildIcon("blue");
 
 function LocateControl({
   onLocate,
+  radiusKm,
 }: {
   onLocate: (lat: number, lng: number) => void;
+  radiusKm?: number;
 }) {
   const map = useMap();
 
   const handleLocate = useCallback(() => {
-    map.locate({ setView: true, maxZoom: 14 });
+    map.locate();
     map.once("locationfound", (e) => {
+      // Zoom disesuaikan dengan lingkaran radius koperasi terdekat,
+      // bukan zoom tetap, supaya semua koperasi dalam zona ikut terlihat.
+      if (radiusKm) {
+        map.flyToBounds(e.latlng.toBounds(radiusKm * 2 * 1000), {
+          padding: [30, 30],
+          duration: 0.8,
+        });
+      } else {
+        map.flyTo(e.latlng, 14, { duration: 0.8 });
+      }
       onLocate(e.latlng.lat, e.latlng.lng);
     });
-  }, [map, onLocate]);
+  }, [map, onLocate, radiusKm]);
 
   return (
     <button
@@ -60,15 +72,28 @@ function LocateControl({
 function FitBounds({
   koperasiList,
   focusPosition,
+  radiusKm,
 }: {
   koperasiList: KoperasiLocation[];
   focusPosition: [number, number] | null;
+  radiusKm?: number;
 }) {
   const map = useMap();
 
   // Digeser & di-zoom ulang setiap titik acuan berubah (mis. pengguna
   // mengetik kota lain) atau daftar koperasi yang tampil berubah.
   useEffect(() => {
+    // Ada zona radius: paskan tampilan ke lingkarannya supaya titik acuan
+    // tetap di tengah dan seluruh koperasi dalam zona terlihat.
+    if (focusPosition && radiusKm) {
+      const center = L.latLng(focusPosition[0], focusPosition[1]);
+      map.flyToBounds(center.toBounds(radiusKm * 2 * 1000), {
+        padding: [30, 30],
+        duration: 0.8,
+      });
+      return;
+    }
+
     const points: [number, number][] = koperasiList.map((k) => [k.lat, k.lng]);
     if (focusPosition) {
       points.push(focusPosition);
@@ -83,7 +108,7 @@ function FitBounds({
 
     const bounds = L.latLngBounds(points.map((p) => L.latLng(p[0], p[1])));
     map.flyToBounds(bounds, { padding: [50, 50], maxZoom: 14, duration: 0.8 });
-  }, [map, koperasiList, focusPosition]);
+  }, [map, koperasiList, focusPosition, radiusKm]);
 
   return null;
 }
@@ -98,13 +123,45 @@ function FlyToSelected({
   selectedId: string | null;
 }) {
   const map = useMap();
+  const lastFlownId = useRef<string | null>(null);
 
   useEffect(() => {
+    // Hanya terbang saat pilihan benar-benar berubah. Tanpa penjaga ini,
+    // perubahan `koperasiList` (mis. setelah menekan "Posisi Saya")
+    // ikut memicu terbang balik ke koperasi yang tersorot.
+    if (selectedId === lastFlownId.current) return;
+    lastFlownId.current = selectedId;
+
     if (!selectedId) return;
     const target = koperasiList.find((k) => k.id === selectedId);
     if (!target) return;
+
     map.flyTo([target.lat, target.lng], Math.max(map.getZoom(), 15), { duration: 0.6 });
   }, [map, koperasiList, selectedId]);
+
+  return null;
+}
+
+// ── Mode tandai titik: menekan peta memindahkan titik acuan ──
+
+function ClickToPickPoint({ onPick }: { onPick: (lat: number, lng: number) => void }) {
+  const map = useMap();
+
+  useMapEvents({
+    click(e) {
+      onPick(e.latlng.lat, e.latlng.lng);
+    },
+  });
+
+  // Petunjuk visual bahwa peta sedang menunggu ditekan
+  useEffect(() => {
+    const container = map.getContainer();
+    const previous = container.style.cursor;
+    container.style.cursor = "crosshair";
+    return () => {
+      container.style.cursor = previous;
+    };
+  }, [map]);
 
   return null;
 }
@@ -121,11 +178,15 @@ interface KoperasiMapProps {
   selectedId?: string | null;
   onSelectKoperasi?: (id: string) => void;
   onUserLocationChange?: (lat: number, lng: number) => void;
+  /** Saat aktif, menekan peta memindahkan titik acuan pengguna */
+  pickMode?: boolean;
+  onPickPoint?: (lat: number, lng: number) => void;
 }
 
-// Peta tidak lagi meminta izin lokasi sendiri saat dibuka.
-// Izin lokasi dikelola halaman induk lewat kartu persetujuan (priming),
-// lalu posisinya dikirim ke sini sebagai prop.
+// Peta tidak meminta izin lokasi sendiri. Titik acuan dikelola store lokasi
+// (diatur lewat bendera lokasi di navbar) lalu dikirim ke sini sebagai prop.
+// Peta ini juga merangkap tempat menandai titik sendiri, supaya pengguna tidak
+// perlu berhadapan dengan dua peta yang berbeda.
 export default function KoperasiMap({
   koperasiList,
   userPosition,
@@ -134,6 +195,8 @@ export default function KoperasiMap({
   selectedId = null,
   onSelectKoperasi,
   onUserLocationChange,
+  pickMode = false,
+  onPickPoint,
 }: KoperasiMapProps) {
   const handleLocate = useCallback(
     (lat: number, lng: number) => {
@@ -150,7 +213,20 @@ export default function KoperasiMap({
       : [-6.3, 107.15]); // Cikarang fallback
 
   return (
-    <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-lg border border-slate-200">
+    <div
+      className={`relative w-full h-full rounded-2xl overflow-hidden shadow-lg border-2 ${
+        pickMode ? "border-[#CE1126]" : "border-slate-200"
+      }`}
+    >
+      {/* Petunjuk saat mode tandai titik menyala */}
+      {pickMode && (
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] bg-[#CE1126] text-white px-4 py-2.5 rounded-full shadow-lg max-w-[90%]">
+          <p className="text-base font-bold text-center">
+            Tekan peta di tempat Anda berada
+          </p>
+        </div>
+      )}
+
       <MapContainer
         center={defaultCenter}
         zoom={13}
@@ -163,8 +239,12 @@ export default function KoperasiMap({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        <FitBounds koperasiList={koperasiList} focusPosition={userPosition} />
+        {/* Saat menandai titik, peta jangan ikut melompat setiap kali ditekan */}
+        {!pickMode && (
+          <FitBounds koperasiList={koperasiList} focusPosition={userPosition} radiusKm={radiusKm} />
+        )}
         <FlyToSelected koperasiList={koperasiList} selectedId={selectedId} />
+        {pickMode && onPickPoint && <ClickToPickPoint onPick={onPickPoint} />}
 
         {/* Titik acuan + lingkaran radius pencarian */}
         {userPosition && (
@@ -243,7 +323,7 @@ export default function KoperasiMap({
           );
         })}
 
-        <LocateControl onLocate={handleLocate} />
+        <LocateControl onLocate={handleLocate} radiusKm={radiusKm} />
       </MapContainer>
     </div>
   );

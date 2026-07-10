@@ -98,6 +98,27 @@ function hexToFloat64(hex: string, littleEndian: boolean): number {
   }
 }
 
+/** Jarak antar maksimum yang dilayani kurir koperasi, dalam kilometer. */
+export const MAX_DELIVERY_RADIUS_KM = 5;
+
+/** Antar gratis bila jarak rumah ke koperasi tidak lebih dari ini. */
+export const DELIVERY_FREE_RADIUS_KM = 1;
+
+/** Tarif antar per kilometer di luar zona gratis. */
+export const DELIVERY_FEE_PER_KM = 3000;
+
+/**
+ * Ongkos kirim: gratis sampai 1 km, selebihnya Rp 3.000 per km dengan jarak
+ * dibulatkan ke atas (1,2 km dihitung 2 km). Satu-satunya sumber kebenaran —
+ * dipakai pratinjau di halaman keranjang maupun perhitungan otoritatif di
+ * server, supaya angka yang dilihat pembeli tidak pernah berbeda dari
+ * yang tersimpan.
+ */
+export function calculateDeliveryFee(distanceKm: number): number {
+  if (distanceKm <= DELIVERY_FREE_RADIUS_KM) return 0;
+  return Math.ceil(distanceKm) * DELIVERY_FEE_PER_KM;
+}
+
 /**
  * Calculate distance between two coordinates using Haversine formula.
  * @returns distance in kilometers
@@ -208,6 +229,70 @@ export interface GeocodedCity {
   lat: number;
   lng: number;
   label: string;
+}
+
+export interface AddressSuggestion {
+  lat: number;
+  lng: number;
+  /** Alamat lengkap siap tampil, mis. "Jl. Mawar 3, Cikarang, Bekasi" */
+  address: string;
+}
+
+/**
+ * Cari saran alamat dari kata yang diketik pengguna (autocomplete).
+ * Dibatasi ke Indonesia. Panggil dengan debounce — Nominatim membatasi
+ * 1 permintaan per detik.
+ */
+export async function searchAddress(
+  query: string,
+  limit = 5
+): Promise<AddressSuggestion[]> {
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+      query
+    )}&countrycodes=id&limit=${limit}&addressdetails=1`;
+    const response = await fetch(url, {
+      headers: { "Accept-Language": "id-ID,id;q=0.9" },
+    });
+
+    if (!response.ok) return [];
+
+    const data = await response.json();
+    if (!Array.isArray(data)) return [];
+
+    return data
+      .map((item): AddressSuggestion | null => {
+        const lat = parseFloat(item.lat);
+        const lng = parseFloat(item.lon);
+        if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
+        return { lat, lng, address: item.display_name };
+      })
+      .filter((item): item is AddressSuggestion => item !== null);
+  } catch (error) {
+    console.error("Address search error:", error);
+    return [];
+  }
+}
+
+/**
+ * Ubah koordinat menjadi alamat lengkap (dipakai saat pengguna menggeser
+ * penanda di peta atau menekan "Gunakan lokasi saya sekarang").
+ */
+export async function getFullAddress(lat: number, lng: number): Promise<string | null> {
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
+    const response = await fetch(url, {
+      headers: { "Accept-Language": "id-ID,id;q=0.9" },
+    });
+
+    if (!response.ok) return null;
+
+    const data = await response.json();
+    return data?.display_name || null;
+  } catch (error) {
+    console.error("Reverse geocoding (full address) error:", error);
+    return null;
+  }
 }
 
 /**

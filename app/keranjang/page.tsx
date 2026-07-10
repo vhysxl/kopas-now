@@ -1,11 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useUserStore } from "@/store/useUserStore";
 import { useCartStore, cartTotalItems, cartTotalPrice } from "@/store/useCartStore";
 import { createTransaction } from "@/server/actions/transactions";
+import { getKoperasiById } from "@/server/actions/getKoperasi";
 import BottomNav from "@/components/kopasnow/BottomNav";
+import AddressPicker, { type AddressValue } from "@/components/kopasnow/AddressPicker";
+import { displayPhone } from "@/utils/helper/account";
+import {
+  haversineDistance,
+  formatDistance,
+  calculateDeliveryFee,
+  DELIVERY_FREE_RADIUS_KM,
+  MAX_DELIVERY_RADIUS_KM,
+} from "@/utils/helper/geo";
 
 type DeliveryMethod = "pickup" | "delivery";
 
@@ -24,19 +34,70 @@ export default function KeranjangPage() {
 
   // "Ambil sendiri" jadi pilihan awal karena tidak butuh alamat (paling aman)
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("pickup");
-  const [address, setAddress] = useState("");
+  const [address, setAddress] = useState<AddressValue>({ address: "", lat: null, lng: null });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
+  // Simpan bersama id-nya supaya koordinat koperasi lama tidak ikut terpakai
+  // ketika keranjang berpindah ke koperasi lain.
+  const [koperasiGeo, setKoperasiGeo] = useState<{
+    id: string;
+    pos: [number, number];
+  } | null>(null);
+
+  // Koordinat koperasi diperlukan untuk mengukur jarak antar ke rumah pembeli
+  useEffect(() => {
+    if (!koperasiId) return;
+
+    let cancelled = false;
+    getKoperasiById(koperasiId).then((result) => {
+      if (cancelled || !result.data) return;
+      setKoperasiGeo({ id: koperasiId, pos: [result.data.lat, result.data.lng] });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [koperasiId]);
+
+  const koperasiPos = koperasiGeo?.id === koperasiId ? koperasiGeo.pos : null;
 
   const totalItems = cartTotalItems(items);
   const totalPrice = cartTotalPrice(items);
-  const needsAddress = deliveryMethod === "delivery" && address.trim().length < 10;
+  const isDelivery = deliveryMethod === "delivery";
+  const addressText = address.address.trim();
+  const hasPin = address.lat !== null && address.lng !== null;
+  const addressIncomplete = isDelivery && (addressText.length < 10 || !hasPin);
+
+  // Jarak rumah ke koperasi, dihitung begitu titik rumah ditandai
+  const deliveryDistanceKm =
+    hasPin && koperasiPos
+      ? haversineDistance(koperasiPos[0], koperasiPos[1], address.lat as number, address.lng as number)
+      : null;
+  const isOutOfRange =
+    isDelivery && deliveryDistanceKm !== null && deliveryDistanceKm > MAX_DELIVERY_RADIUS_KM;
+
+  // Pratinjau ongkir memakai fungsi yang sama dengan server, jadi angka yang
+  // dilihat pembeli tidak akan berbeda dari yang ditagihkan.
+  const deliveryFee =
+    isDelivery && deliveryDistanceKm !== null && !isOutOfRange
+      ? calculateDeliveryFee(deliveryDistanceKm)
+      : 0;
+  const grandTotal = totalPrice + deliveryFee;
 
   const handleSubmit = async () => {
     if (!user || !koperasiId || items.length === 0) return;
-    if (needsAddress) {
-      setSubmitError("Tolong tulis alamat rumah Anda dulu, supaya kurir tidak tersesat.");
+    if (addressIncomplete) {
+      setSubmitError(
+        addressText.length < 10
+          ? "Tolong tulis alamat rumah Anda dulu, supaya kurir tidak tersesat."
+          : "Tolong tandai titik rumah Anda di peta dulu, supaya kurir tidak tersesat."
+      );
+      return;
+    }
+    if (isOutOfRange) {
+      setSubmitError(
+        `Rumah Anda ${formatDistance(deliveryDistanceKm)} dari ${koperasiName}, melebihi batas antar ${MAX_DELIVERY_RADIUS_KM} km. Silakan pilih "Ambil Sendiri".`
+      );
       return;
     }
 
@@ -49,12 +110,12 @@ export default function KeranjangPage() {
       koperasi_id: koperasiId,
       total_amount: totalPrice,
       payment_method: "COD",
-      delivery_fee: 0,
       tipe_pembelian: "online",
-      notes:
-        deliveryMethod === "delivery"
-          ? `Diantar ke rumah. Alamat: ${address.trim()}`
-          : "Diambil sendiri oleh pembeli di koperasi.",
+      delivery_lat: isDelivery ? address.lat ?? undefined : undefined,
+      delivery_lng: isDelivery ? address.lng ?? undefined : undefined,
+      notes: isDelivery
+        ? `Diantar ke rumah. Alamat: ${addressText}`
+        : "Diambil sendiri oleh pembeli di koperasi.",
       items: items.map((i) => ({
         product_id: i.productId,
         product_name: i.name,
@@ -260,24 +321,44 @@ export default function KeranjangPage() {
                   </div>
                   <p className="text-base font-bold text-slate-900 mt-2">Diantar ke Rumah</p>
                   <p className="text-sm text-slate-600 mt-0.5">
-                    Kurir koperasi mengantar barang ke alamat Anda.
+                    Sampai {MAX_DELIVERY_RADIUS_KM} km dari koperasi. Gratis di bawah{" "}
+                    {DELIVERY_FREE_RADIUS_KM} km.
                   </p>
                 </button>
               </div>
 
-              {deliveryMethod === "delivery" && (
-                <div className="mt-3">
-                  <label htmlFor="alamat" className="text-base font-bold text-slate-900 block mb-1.5">
-                    Alamat rumah Anda
-                  </label>
-                  <textarea
-                    id="alamat"
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    rows={3}
-                    placeholder="Contoh: Jl. Mawar No. 3, RT 02 RW 01, dekat masjid"
-                    className="w-full p-4 bg-white border-2 border-slate-200 focus:border-[#CE1126] rounded-xl text-base text-slate-900 placeholder-slate-400 outline-none resize-none"
-                  />
+              {isDelivery && (
+                <div className="mt-4">
+                  <AddressPicker value={address} onChange={setAddress} />
+
+                  {/* Status jarak antar, muncul begitu titik rumah ditandai */}
+                  {deliveryDistanceKm !== null && (
+                    isOutOfRange ? (
+                      <div className="mt-3 p-4 bg-red-50 border-2 border-red-200 rounded-xl">
+                        <p className="text-base font-bold text-red-900">
+                          Rumah Anda terlalu jauh dari koperasi
+                        </p>
+                        <p className="text-base text-red-800 mt-1">
+                          Jaraknya {formatDistance(deliveryDistanceKm)}, sedangkan kurir{" "}
+                          {koperasiName} hanya mengantar sampai {MAX_DELIVERY_RADIUS_KM} km.
+                        </p>
+                        <button
+                          onClick={() => setDeliveryMethod("pickup")}
+                          className="mt-3 w-full min-h-[52px] bg-white hover:bg-red-100 text-red-900 border-2 border-red-300 rounded-xl text-base font-bold transition-colors cursor-pointer"
+                        >
+                          Ganti ke Ambil Sendiri
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="mt-3 text-base font-semibold text-emerald-700">
+                        ✓ Jarak rumah Anda {formatDistance(deliveryDistanceKm)} dari koperasi —
+                        masih bisa diantar.{" "}
+                        {deliveryFee === 0
+                          ? `Ongkir gratis (di bawah ${DELIVERY_FREE_RADIUS_KM} km).`
+                          : `Ongkir Rp ${deliveryFee.toLocaleString("id-ID")}.`}
+                      </p>
+                    )
+                  )}
                 </div>
               )}
             </div>
@@ -298,13 +379,39 @@ export default function KeranjangPage() {
 
             {/* Total & tombol pesan */}
             <div className="bg-white rounded-2xl border border-slate-200 p-5">
-              <div className="flex items-center justify-between">
-                <span className="text-base font-bold text-slate-700">
-                  Total ({totalItems} barang)
-                </span>
-                <span className="text-2xl font-extrabold text-[#CE1126]">
-                  Rp {totalPrice.toLocaleString("id-ID")}
-                </span>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-base text-slate-700">
+                    Harga barang ({totalItems} barang)
+                  </span>
+                  <span className="text-base font-semibold text-slate-900">
+                    Rp {totalPrice.toLocaleString("id-ID")}
+                  </span>
+                </div>
+
+                {isDelivery && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-base text-slate-700">Ongkos kirim</span>
+                    {deliveryDistanceKm === null ? (
+                      <span className="text-base text-slate-500">
+                        Tandai titik rumah dulu
+                      </span>
+                    ) : deliveryFee === 0 ? (
+                      <span className="text-base font-bold text-emerald-700">Gratis</span>
+                    ) : (
+                      <span className="text-base font-semibold text-slate-900">
+                        Rp {deliveryFee.toLocaleString("id-ID")}
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between pt-2 border-t border-slate-200">
+                  <span className="text-base font-bold text-slate-700">Total bayar</span>
+                  <span className="text-2xl font-extrabold text-[#CE1126]">
+                    Rp {grandTotal.toLocaleString("id-ID")}
+                  </span>
+                </div>
               </div>
 
               {submitError && (
@@ -315,14 +422,18 @@ export default function KeranjangPage() {
 
               <button
                 onClick={handleSubmit}
-                disabled={isSubmitting || !user}
-                className="mt-4 w-full min-h-[60px] bg-[#CE1126] hover:bg-[#A50E1E] active:bg-[#8E0C1A] text-white rounded-xl text-lg font-extrabold transition-colors disabled:opacity-60 cursor-pointer"
+                disabled={isSubmitting || !user || isOutOfRange}
+                className="mt-4 w-full min-h-[60px] bg-[#CE1126] hover:bg-[#A50E1E] active:bg-[#8E0C1A] text-white rounded-xl text-lg font-extrabold transition-colors disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
               >
-                {isSubmitting ? "Mengirim pesanan..." : "Pesan Sekarang"}
+                {isSubmitting
+                  ? "Mengirim pesanan..."
+                  : isOutOfRange
+                  ? "Di Luar Jangkauan Antar"
+                  : "Pesan Sekarang"}
               </button>
               <p className="text-sm text-slate-500 text-center mt-3">
                 Setelah menekan tombol, pengurus koperasi menerima pesanan Anda
-                {customer?.phone ? " dan mengabari lewat WhatsApp" : ""}.
+                {displayPhone(user, customer) ? " dan mengabari lewat WhatsApp" : ""}.
               </p>
             </div>
           </div>

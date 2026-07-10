@@ -1,8 +1,21 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import Link from "next/link";
 
 type TransactionStatus = "pending" | "paid" | "processing" | "shipped" | "completed" | "cancelled";
+
+/** Urut sesuai perjalanan pesanan, dari kiri ke kanan. */
+const STATUS_FLOW: TransactionStatus[] = [
+  "pending",
+  "paid",
+  "processing",
+  "shipped",
+  "completed",
+  "cancelled",
+];
+
+type StatusFilter = TransactionStatus | "all";
 
 type Transaction = {
   id_transaksi: string;
@@ -28,29 +41,97 @@ type OrdersListProps = {
   transactions: Transaction[];
 };
 
-const statusConfig: Record<TransactionStatus, { label: string; color: string; bgColor: string; borderColor: string }> = {
-  pending: { label: "Menunggu Pembayaran", color: "text-amber-700", bgColor: "bg-amber-50", borderColor: "border-amber-100" },
-  paid: { label: "Dibayar", color: "text-blue-700", bgColor: "bg-blue-50", borderColor: "border-blue-100" },
-  processing: { label: "Diproses", color: "text-purple-700", bgColor: "bg-purple-50", borderColor: "border-purple-100" },
-  shipped: { label: "Dikirim", color: "text-cyan-700", bgColor: "bg-cyan-50", borderColor: "border-cyan-100" },
-  completed: { label: "Selesai", color: "text-emerald-700", bgColor: "bg-emerald-50", borderColor: "border-emerald-100" },
-  cancelled: { label: "Dibatalkan", color: "text-red-700", bgColor: "bg-red-50", borderColor: "border-red-100" },
+const statusConfig: Record<TransactionStatus, { label: string; tab: string; color: string; bgColor: string; borderColor: string }> = {
+  pending: { label: "Menunggu Pembayaran", tab: "Menunggu", color: "text-amber-700", bgColor: "bg-amber-50", borderColor: "border-amber-100" },
+  paid: { label: "Dibayar", tab: "Dibayar", color: "text-blue-700", bgColor: "bg-blue-50", borderColor: "border-blue-100" },
+  processing: { label: "Diproses", tab: "Diproses", color: "text-purple-700", bgColor: "bg-purple-50", borderColor: "border-purple-100" },
+  shipped: { label: "Dikirim", tab: "Dikirim", color: "text-cyan-700", bgColor: "bg-cyan-50", borderColor: "border-cyan-100" },
+  completed: { label: "Selesai", tab: "Selesai", color: "text-emerald-700", bgColor: "bg-emerald-50", borderColor: "border-emerald-100" },
+  cancelled: { label: "Dibatalkan", tab: "Dibatalkan", color: "text-red-700", bgColor: "bg-red-50", borderColor: "border-red-100" },
 };
 
 export default function OrdersList({ transactions }: OrdersListProps) {
+  const [activeStatus, setActiveStatus] = useState<StatusFilter>("all");
+
+  // Hitung isi tiap tab supaya pengguna tahu mana yang kosong sebelum menekan
+  const counts = useMemo(() => {
+    const result: Record<string, number> = { all: transactions?.length ?? 0 };
+    for (const status of STATUS_FLOW) {
+      result[status] = (transactions ?? []).filter(
+        (t) => t.status_transaksi === status
+      ).length;
+    }
+    return result;
+  }, [transactions]);
+
+  const visible = useMemo(() => {
+    if (!transactions) return [];
+    if (activeStatus === "all") return transactions;
+    return transactions.filter((t) => t.status_transaksi === activeStatus);
+  }, [transactions, activeStatus]);
+
   if (!transactions || transactions.length === 0) {
     return (
       <div className="bg-white border border-slate-100 rounded-2xl p-8 text-center">
-    <div className="text-slate-400 text-sm mb-2">📦</div>
-        <p className="text-slate-600 text-sm font-medium mb-1">Belum Ada Pesanan</p>
-        <p className="text-slate-400 text-xs">Riwayat pemesanan Anda akan muncul di sini</p>
-   </div>
-  );
+        <div className="text-4xl mb-2">📦</div>
+        <p className="text-slate-800 text-lg font-bold mb-1">Belum Ada Pesanan</p>
+        <p className="text-slate-600 text-base">Riwayat pemesanan Anda akan muncul di sini</p>
+      </div>
+    );
   }
 
+  const tabs: { key: StatusFilter; label: string }[] = [
+    { key: "all", label: "Semua" },
+    ...STATUS_FLOW.map((s) => ({ key: s as StatusFilter, label: statusConfig[s].tab })),
+  ];
+
   return (
-    <div className="space-y-3">
-      {transactions.map((transaction) => {
+    <div>
+      {/* Tab status, urut mengikuti perjalanan pesanan */}
+      <div
+        role="tablist"
+        aria-label="Saring pesanan menurut status"
+        className="flex gap-2 overflow-x-auto pb-2 mb-4 hide-scrollbar"
+      >
+        {tabs.map((tab) => {
+          const isActive = activeStatus === tab.key;
+          const count = counts[tab.key] ?? 0;
+          return (
+            <button
+              key={tab.key}
+              role="tab"
+              aria-selected={isActive}
+              onClick={() => setActiveStatus(tab.key)}
+              className={`shrink-0 min-h-[48px] px-4 rounded-full border-2 text-base font-bold transition-colors cursor-pointer ${
+                isActive
+                  ? "bg-[#CE1126] text-white border-[#CE1126]"
+                  : "bg-white text-slate-700 border-slate-200 hover:border-slate-300"
+              }`}
+            >
+              {tab.label}
+              <span className={isActive ? "text-white/80" : "text-slate-500"}> ({count})</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {visible.length === 0 ? (
+        <div className="bg-white border border-slate-100 rounded-2xl p-8 text-center">
+          <div className="text-4xl mb-2">🔍</div>
+          <p className="text-slate-800 text-lg font-bold mb-1">
+            Tidak ada pesanan berstatus &quot;
+            {activeStatus === "all" ? "Semua" : statusConfig[activeStatus].tab}&quot;
+          </p>
+          <button
+            onClick={() => setActiveStatus("all")}
+            className="mt-3 min-h-[48px] px-6 text-base font-bold text-[#CE1126] hover:underline cursor-pointer"
+          >
+            Lihat Semua Pesanan
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {visible.map((transaction) => {
         const statusInfo = statusConfig[transaction.status_transaksi] || statusConfig.pending;
         const totalItems = transaction.kopasnow_online_transactions_detail.reduce(
        (sum, item) => sum + item.jumlah,
@@ -124,26 +205,36 @@ export default function OrdersList({ transactions }: OrdersListProps) {
               </div>
       </div>
 
- {/* Footer */}
-        <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-     <div>
-                <p className="text-[10px] text-slate-400 mb-0.5">Total Pembayaran</p>
-  <p className="text-sm font-black text-slate-800">
-       Rp {(transaction.total_pembelian + transaction.delivery_fee).toLocaleString("id-ID")}
-     </p>
-         </div>
-      <div className="text-right">
-     <p className="text-[10px] text-slate-400">
-               {formattedDate} • {formattedTime}
-       </p>
-                <p className="text-[10px] font-medium text-slate-500">
-       {totalItems} item • {transaction.metode_pembayaran}
-           </p>
-   </div>
-   </div>
-          </Link>
-        );
-      })}
+            {/* Footer */}
+            <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+              <div>
+                <p className="text-sm text-slate-500 mb-0.5">
+                  Total Pembayaran
+                  {transaction.delivery_fee > 0 && (
+                    <span className="text-slate-400">
+                      {" "}
+                      (termasuk ongkir Rp {transaction.delivery_fee.toLocaleString("id-ID")})
+                    </span>
+                  )}
+                </p>
+                <p className="text-base font-black text-slate-800">
+                  Rp {(transaction.total_pembelian + transaction.delivery_fee).toLocaleString("id-ID")}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm text-slate-500">
+                  {formattedDate} • {formattedTime}
+                </p>
+                <p className="text-sm font-medium text-slate-600">
+                  {totalItems} barang • {transaction.metode_pembayaran}
+                </p>
+              </div>
+            </div>
+              </Link>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

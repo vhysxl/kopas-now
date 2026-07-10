@@ -130,6 +130,15 @@ body {
   border-radius: 4px;
 }
 
+/* Baris kategori & tab status: bisa digeser tanpa batang gulir yang mengganggu */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* Custom animations for KopasNow Hyperlocal discovery */
 @keyframes pulse-ring {
   0% {

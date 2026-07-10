@@ -3,6 +3,14 @@
 import { createClient } from "@/utils/supabase/server";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { cookies } from "next/headers";
+import {
+  haversineDistance,
+  parseWKBHex,
+  formatDistance,
+  calculateDeliveryFee,
+  MAX_DELIVERY_RADIUS_KM,
+} from "@/utils/helper/geo";
+import { createNotification } from "@/server/actions/notifications";
 
 export type TransactionItem = {
   product_id: string;
@@ -21,6 +29,7 @@ export type CreateTransactionParams = {
   delivery_address?: string;
   delivery_lat?: number;
   delivery_lng?: number;
+  /** @deprecated Diabaikan — ongkir selalu dihitung ulang di server. */
   delivery_fee?: number;
   notes?: string;
   items: TransactionItem[];
@@ -76,6 +85,51 @@ async function ensureCustomerExists(userId: string): Promise<string | null> {
   return newCustomer.id;
 }
 
+/** Nomor WhatsApp pembeli untuk notifikasi; null bila belum tercatat. */
+async function getCustomerPhone(customerId: string): Promise<string | null> {
+  const adminClient = createAdminClient();
+  const { data } = await adminClient
+    .from("kopasnow_customers")
+    .select("phone")
+    .eq("id", customerId)
+    .maybeSingle();
+
+  return data?.phone ?? null;
+}
+
+/**
+ * Ukur jarak alamat antar ke koperasi.
+ *
+ * Jaraknya dipakai dua kali — untuk menolak pesanan di luar radius layanan,
+ * dan untuk menghitung ongkir — jadi dihitung sekali lalu dikembalikan.
+ *
+ * @returns null bila koperasi tidak terbaca (biar alur normal / foreign key
+ *          yang menanganinya).
+ */
+async function measureDelivery(
+  koperasiId: string,
+  lat: number,
+  lng: number
+): Promise<{ distanceKm: number; koperasiName: string; outOfRange: boolean } | null> {
+  const adminClient = createAdminClient();
+  const { data, error } = await adminClient
+    .from("kopasnow_koperasi")
+    .select("nama, lokasi")
+    .eq("id", koperasiId)
+    .maybeSingle();
+
+  if (error || !data?.lokasi) return null;
+
+  const [koperasiLat, koperasiLng] = parseWKBHex(data.lokasi as string);
+  const distanceKm = haversineDistance(koperasiLat, koperasiLng, lat, lng);
+
+  return {
+    distanceKm,
+    koperasiName: data.nama,
+    outOfRange: distanceKm > MAX_DELIVERY_RADIUS_KM,
+  };
+}
+
 /**
  * Create a new transaction in kopasnow_online_transactions_header and detail
  */
@@ -97,7 +151,32 @@ export async function createTransaction(
 
     // Prepare geography point for delivery address if provided
     let alamatPengiriman = null;
-    if (params.delivery_lat && params.delivery_lng) {
+    // Ongkir dihitung ulang di server dan mengabaikan kiriman client —
+    // nilai inilah yang tersimpan dan ditagihkan.
+    let deliveryFee = 0;
+
+    if (params.delivery_lat != null && params.delivery_lng != null) {
+      // Kurir koperasi hanya melayani dalam radius tertentu. Diperiksa di sini
+      // juga, bukan hanya di UI, supaya pesanan di luar jangkauan tetap ditolak.
+      const delivery = await measureDelivery(
+        params.koperasi_id,
+        params.delivery_lat,
+        params.delivery_lng
+      );
+
+      if (delivery?.outOfRange) {
+        return {
+          success: false,
+          error: `Alamat Anda ${formatDistance(delivery.distanceKm)} dari ${
+            delivery.koperasiName
+          }, melebihi batas antar ${MAX_DELIVERY_RADIUS_KM} km. Silakan pilih "Ambil Sendiri", atau belanja di koperasi yang lebih dekat.`,
+        };
+      }
+
+      if (delivery) {
+        deliveryFee = calculateDeliveryFee(delivery.distanceKm);
+      }
+
       alamatPengiriman = `POINT(${params.delivery_lng} ${params.delivery_lat})`;
     }
 
@@ -111,7 +190,7 @@ export async function createTransaction(
         metode_pembayaran: params.payment_method,
         status_transaksi: "pending",
         alamat_pengiriman: alamatPengiriman,
-        delivery_fee: params.delivery_fee || 0,
+        delivery_fee: deliveryFee,
         notes: params.notes,
         tipe_pembelian: params.tipe_pembelian,
       })
@@ -168,6 +247,22 @@ export async function createTransaction(
   };
   }
 
+    // Kabari pembeli. Notifikasi tidak pernah menggagalkan pesanan yang
+    // sudah tercatat, jadi kegagalannya ditelan di dalam createNotification.
+    const totalWithFee = params.total_amount + deliveryFee;
+    await createNotification({
+      customerId: customerId,
+      transactionId: transaction.id_transaksi,
+      tipe: "order_created",
+      judul: "Pesanan Anda sudah diterima",
+      isi:
+        `Nomor pesanan: ${transaction.id_transaksi.split("-")[0].toUpperCase()}\n` +
+        `Total bayar: Rp ${totalWithFee.toLocaleString("id-ID")}` +
+        (deliveryFee > 0 ? ` (termasuk ongkir Rp ${deliveryFee.toLocaleString("id-ID")})` : "") +
+        `\n\nPengurus koperasi akan menghubungi Anda.`,
+      phone: await getCustomerPhone(customerId),
+    });
+
     return {
       success: true,
       transaction_id: transaction.id_transaksi,
@@ -181,8 +276,39 @@ export async function createTransaction(
   }
 }
 
+/** Kalimat yang dipahami pembeli untuk tiap status pesanan. */
+const STATUS_MESSAGE: Record<string, { judul: string; isi: string }> = {
+  pending: {
+    judul: "Pesanan menunggu diproses",
+    isi: "Pesanan Anda sudah masuk dan sedang menunggu diproses koperasi.",
+  },
+  paid: {
+    judul: "Pembayaran diterima",
+    isi: "Pembayaran Anda sudah diterima koperasi. Terima kasih!",
+  },
+  processing: {
+    judul: "Pesanan sedang disiapkan",
+    isi: "Pengurus koperasi sedang menyiapkan barang pesanan Anda.",
+  },
+  shipped: {
+    judul: "Pesanan sedang diantar",
+    isi: "Kurir koperasi sedang mengantar pesanan Anda ke rumah. Mohon ditunggu.",
+  },
+  completed: {
+    judul: "Pesanan selesai",
+    isi: "Pesanan Anda sudah selesai. Terima kasih sudah belanja di koperasi desa!",
+  },
+  cancelled: {
+    judul: "Pesanan dibatalkan",
+    isi: "Pesanan Anda dibatalkan. Hubungi pengurus koperasi bila ini tidak sesuai.",
+  },
+};
+
 /**
  * Update transaction status
+ *
+ * Catatan: notifikasi hanya terkirim bila status diubah lewat fungsi ini.
+ * Perubahan status langsung dari dashboard Supabase tidak akan memicu apa pun.
  */
 export async function updateTransactionStatus(
   transaction_id: string,
@@ -217,6 +343,28 @@ status_transaksi: status,
         success: false,
   error: "Gagal memperbarui status transaksi.",
 };
+    }
+
+    // Kabari pembeli tentang status barunya
+    const adminClient = createAdminClient();
+    const { data: header } = await adminClient
+      .from("kopasnow_online_transactions_header")
+      .select("id_pelanggan")
+      .eq("id_transaksi", transaction_id)
+      .maybeSingle();
+
+    const message = STATUS_MESSAGE[status];
+    if (header?.id_pelanggan && message) {
+      await createNotification({
+        customerId: header.id_pelanggan,
+        transactionId: transaction_id,
+        tipe: "status_changed",
+        judul: message.judul,
+        isi: `${message.isi}\n\nNomor pesanan: ${transaction_id
+          .split("-")[0]
+          .toUpperCase()}`,
+        phone: await getCustomerPhone(header.id_pelanggan),
+      });
     }
 
     return {

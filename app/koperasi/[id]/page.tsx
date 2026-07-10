@@ -3,6 +3,8 @@ import Link from "next/link";
 import { getKoperasiById } from "@/server/actions/getKoperasi";
 import { getProductsByKoperasiId } from "@/server/actions/getProducts";
 import ProductCatalog from "@/components/kopasnow/ProductCatalog";
+import KoperasiDistance from "@/components/kopasnow/KoperasiDistance";
+import { koperasiImage } from "@/utils/helper/koperasiImage";
 
 interface PageProps {
   params: Promise<{
@@ -58,20 +60,50 @@ export default async function KoperasiCatalogPage({ params }: PageProps) {
       {/* Main Content */}
       <main className="flex-1 max-w-2xl lg:max-w-4xl w-full mx-auto px-4 py-6 flex flex-col gap-6">
         {/* Info koperasi */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200">
-          <div className="flex items-start justify-between gap-3">
-            <h2 className="text-xl font-extrabold text-slate-900 leading-tight">
-              {koperasi.nama}
-            </h2>
-            {koperasi.status === "active" && (
-              <span className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+          {/* Foto stok — kopasnow_koperasi belum punya kolom gambar */}
+          <div className="relative h-40 sm:h-56 bg-slate-100">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={koperasiImage(koperasi.id)}
+              alt=""
+              className="w-full h-full object-cover"
+            />
+            {koperasi.status === "active" ? (
+              <span className="absolute top-3 right-3 inline-flex items-center px-3 py-1.5 rounded-full text-sm font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                 Buka
+              </span>
+            ) : (
+              <span className="absolute top-3 right-3 inline-flex items-center px-3 py-1.5 rounded-full text-sm font-bold bg-slate-100 text-slate-600 border border-slate-300">
+                Tutup
               </span>
             )}
           </div>
-          {koperasi.alamat && (
-            <p className="text-base text-slate-600 mt-2">📍 {koperasi.alamat}</p>
-          )}
+
+          <div className="p-5">
+            <h2 className="text-xl font-extrabold text-slate-900 leading-tight">
+              {koperasi.nama}
+            </h2>
+
+            {koperasi.alamat && (
+              <p className="text-base text-slate-600 mt-2">📍 {koperasi.alamat}</p>
+            )}
+
+            <div className="mt-2">
+              <KoperasiDistance lat={koperasi.lat} lng={koperasi.lng} />
+            </div>
+
+            <dl className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-slate-100">
+              <div>
+                <dt className="text-sm text-slate-500">Barang dijual</dt>
+                <dd className="text-lg font-bold text-slate-900">{products.length} macam</dd>
+              </div>
+              <div>
+                <dt className="text-sm text-slate-500">Cara bayar</dt>
+                <dd className="text-lg font-bold text-slate-900">Tunai di tempat</dd>
+              </div>
+            </dl>
+          </div>
         </div>
 
         {/* Katalog */}

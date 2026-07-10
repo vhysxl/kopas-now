@@ -209,7 +209,11 @@ export async function requestLoginOTP(
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
-  const { data: customer, error: dbError } = await supabase
+  // Lewat admin client: kopasnow_customers mengaktifkan RLS tanpa policy SELECT,
+  // sehingga query dari client biasa selalu kosong dan setiap nomor akan
+  // dianggap pengguna baru (nama diminta ulang terus).
+  const adminClient = createAdminClient();
+  const { data: customer, error: dbError } = await adminClient
     .from("kopasnow_customers")
     .select("id")
     .eq("phone", normalizedPhone)

@@ -3,7 +3,9 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
+import { createAdminClient } from "@/utils/supabase/admin";
 import AuthProvider from "@/components/AuthProvider";
+import ToastProvider from "@/components/kopasnow/ToastProvider";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   variable: "--font-plus-jakarta-sans",
@@ -29,10 +31,13 @@ export default async function RootLayout({
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Query customer details if user exists
+  // Query customer details if user exists.
+  // Harus lewat admin client — kopasnow_customers punya RLS tanpa policy SELECT,
+  // jadi query dengan sesi pengguna selalu mengembalikan null.
   let customer = null;
   if (user) {
-    const { data } = await supabase
+    const adminClient = createAdminClient();
+    const { data } = await adminClient
       .from("kopasnow_customers")
       .select("*")
       .eq("user_id", user.id)
@@ -50,7 +55,7 @@ export default async function RootLayout({
       </head>
       <body className="min-h-full flex flex-col">
         <AuthProvider initialUser={user} initialCustomer={customer}>
-          {children}
+          <ToastProvider>{children}</ToastProvider>
         </AuthProvider>
       </body>
     </html>
