@@ -108,31 +108,119 @@ export default function Home() {
     }
   }, []);
 
+  // Compute rider coordinates along route (simplified for now)
+  const riderCoords = useMemo(() => {
+    // Simplified animation - can be enhanced with actual coordinates later
+    return { x: 180 + (riderProgress * 0.5), y: 160 - (riderProgress * 0.3) };
+  }, [riderProgress]);
+
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#CE1126]"></div>
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-[#CE1126]"></div>
       </div>
     );
   }
 
   if (!user) {
-    return null; // Middleware will handle redirecting to /auth
+    return null; // Middleware handles redirect
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans selection:bg-red-500 selection:text-white flex flex-col relative overflow-x-hidden">
+    <div className="min-h-screen bg-[#F6F6F6] font-sans selection:bg-[#CE1126] selection:text-white flex flex-col relative overflow-x-hidden text-black">
       {/* Top Banner (Merah Putih Decor) */}
-      <div className="w-full h-1.5 flex fixed top-0 left-0 z-50">
-        <div className="flex-1 bg-[#CE1126]" />
-        <div className="flex-1 bg-white border-b border-slate-100" />
+      <div className="w-full h-1 flex fixed top-0 left-0 z-50">
+        <div className="w-1/2 bg-[#CE1126]" />
+        <div className="w-1/2 bg-white" />
       </div>
 
       {/* Header */}
-      <header className="bg-white border-b border-slate-100 shadow-sm sticky top-1.5 z-40">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <header className="bg-white border-b border-gray-100 shadow-sm sticky top-1 z-40">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+          {/* Logo & Delivery Toggle */}
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-1 cursor-pointer" onClick={() => setSelectedCoopId("all")}>
+              <span className="text-2xl font-black tracking-tight text-black">Kopas</span>
+              <span className="text-2xl font-black tracking-tight text-[#CE1126]">Now</span>
+              <span className="bg-[#CE1126] text-white px-1.5 py-0.5 rounded-sm font-bold text-[9px] uppercase tracking-wider ml-1">
+                Mart
+              </span>
+            </div>
+
+            {/* Delivery vs Pickup Toggle (Uber Eats Style) */}
+            <div className="hidden sm:flex bg-[#F3F3F3] p-1 rounded-full border border-gray-100">
+              <button
+                onClick={() => setDeliveryMethod("delivery")}
+                className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${
+                  deliveryMethod === "delivery"
+                    ? "bg-black text-white shadow-sm"
+                    : "text-gray-500 hover:text-black"
+                }`}
+              >
+                Kirim
+              </button>
+              <button
+                onClick={() => setDeliveryMethod("pickup")}
+                className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${
+                  deliveryMethod === "pickup"
+                    ? "bg-black text-white shadow-sm"
+                    : "text-gray-500 hover:text-black"
+                }`}
+              >
+                Ambil
+              </button>
+            </div>
+          </div>
+
+     {/* Hyperlocal Address Selector */}
+        <div className="hidden md:flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#F3F3F3] hover:bg-[#EAEAEA] transition-all cursor-pointer text-xs font-bold text-black">
+            <span className="text-sm">📍</span>
+            <span className="truncate max-w-[200px]">
+              {locationName}
+            </span>
+          <svg
+   className="w-3 h-3 text-gray-500 shrink-0"
+     fill="none"
+     stroke="currentColor"
+        strokeWidth="2.5"
+     viewBox="0 0 24 24"
+   >
+        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+ </div>
+
+          {/* Right Header Navigation */}
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#CE1126] to-[#A50E1E] flex items-center justify-center text-white shadow-md shadow-red-500/10">
+            {/* Riwayat Pemesanan */}
+            <Link
+              href="/orders"
+              className="relative px-4 py-2 bg-white hover:bg-slate-50 text-black border border-slate-200 rounded-full transition-all duration-200 cursor-pointer flex items-center gap-2 text-xs font-bold"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={2}
+                stroke="currentColor"
+                className="w-4 h-4"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z"
+                />
+              </svg>
+            </div>
+            <span className="font-extrabold text-base text-slate-800 tracking-tight cursor-pointer" onClick={() => setIsProfileOpen(false)}>
+              Kopas<span className="text-[#CE1126]">Now</span>
+            </span>
+          </div>
+
+            {/* Cart Trigger */}
+            <button
+              onClick={() => setIsCartOpen(true)}
+              className="relative px-4 py-2 bg-black hover:bg-neutral-800 text-white rounded-full transition-all duration-200 cursor-pointer flex items-center gap-2 text-xs font-bold"
+            >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
@@ -144,43 +232,18 @@ export default function Home() {
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z"
-                />
-              </svg>
-            </div>
-            <span className="font-extrabold text-base text-slate-800 tracking-tight cursor-pointer" onClick={() => setIsProfileOpen(false)}>
-              Kopas<span className="text-[#CE1126]">Now</span>
-            </span>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {/* Cart Trigger */}
-            <button
-              onClick={() => setIsCartOpen(true)}
-              className="relative p-2 text-slate-600 hover:text-[#CE1126] hover:bg-red-50 rounded-xl transition-all duration-200 cursor-pointer"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={2}
-                stroke="currentColor"
-                className="w-5.5 h-5.5"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
                   d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z"
                 />
               </svg>
+              <span>Keranjang</span>
               {cartTotalItems > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-[#CE1126] text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                <span className="w-5 h-5 bg-[#CE1126] text-white text-[10px] font-black rounded-full flex items-center justify-center border border-black animate-scale-in">
                   {cartTotalItems}
                 </span>
               )}
             </button>
 
-            {/* Profile Toggle Card */}
+            {/* Profile Avatar Trigger */}
             <button
               onClick={() => setIsProfileOpen(!isProfileOpen)}
               className="w-8 h-8 rounded-full bg-red-50 border border-red-100 flex items-center justify-center text-sm font-bold text-[#CE1126] hover:bg-[#CE1126] hover:text-white transition-all cursor-pointer shadow-sm"
@@ -345,36 +408,82 @@ export default function Home() {
         )}
       </main>
 
-      {/* Checkout Success Alert Overlay Modal */}
+      {/* Checkout Success Screen with Real-time Scooter Animation map (Uber style tracking) */}
       {checkoutSuccess && lastOrderDetails && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="relative w-full max-w-sm bg-white rounded-3xl p-6 text-center shadow-2xl border border-slate-100 animate-fade-in space-y-5">
-            {/* Green animated checkmark badge */}
-            <div className="w-16 h-16 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto border border-emerald-100 animate-pulse-dot shadow-inner">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={3}
-                stroke="currentColor"
-                className="w-8 h-8"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-              </svg>
-            </div>
-
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="relative w-full max-w-md bg-white rounded-3xl p-6 text-center shadow-2xl border border-gray-100 animate-fade-in space-y-5 text-black">
+            
+            {/* Header info */}
             <div className="space-y-1">
-              <h3 className="text-lg font-extrabold text-slate-800 tracking-tight">Checkout Berhasil!</h3>
-              <p className="text-xs text-emerald-600 font-semibold">
-                Simulasi Terkirim ke Pengurus via WhatsApp
+              <div className="w-12 h-12 bg-red-50 text-[#CE1126] rounded-full flex items-center justify-center mx-auto border border-red-100 shadow-inner">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={3}
+                  stroke="currentColor"
+                  className="w-6 h-6 animate-pulse"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                </svg>
+              </div>
+              <h3 className="text-base font-black text-black tracking-tight mt-2">Pesanan Sedang Diproses</h3>
+              <p className="text-[10px] text-red-600 font-extrabold uppercase tracking-wider">
+                Pengantaran Hyperlocal Real-Time
               </p>
             </div>
 
-            {/* Order details display */}
-            <div className="bg-slate-50 rounded-2xl p-4 text-left border border-slate-100 text-xs space-y-2.5">
-              <div className="flex justify-between border-b border-slate-200/60 pb-2">
-                <span className="text-slate-400 font-medium">Asal Koperasi</span>
-                <span className="font-bold text-slate-700 truncate max-w-[180px]">{lastOrderDetails.coopName}</span>
+            {/* Interactive Live Tracking Map with Rider Scooter emoji animation */}
+            <div className="bg-[#E5E9F0] h-44 rounded-2xl relative overflow-hidden shadow-inner border border-gray-200">
+              <svg className="w-full h-full" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+                {/* Background Roads / Map outline */}
+                <path d="M 0,150 Q 150,150 200,80 T 400,200" stroke="#CBD5E1" strokeWidth="8" fill="none" />
+                <path d="M 200,0 Q 180,120 180,180 T 300,300" stroke="#CBD5E1" strokeWidth="6" fill="none" />
+                
+    {/* Store Pin (Origin) */}
+<g transform="translate(140, 110)">
+               <circle r="12" fill="#CE1126" fillOpacity="0.2" className="animate-pulse" />
+  <circle r="7" fill="#CE1126" />
+                  <text y="3" fontSize="8" fontWeight="bold" fill="white" textAnchor="middle">S</text>
+                </g>
+
+                {/* User Location (Destination) */}
+                <g transform="translate(180, 160)">
+                  <circle r="12" fill="#3B82F6" fillOpacity="0.2" />
+                  <circle r="7" fill="#3B82F6" />
+                  <text y="3" fontSize="8" fontWeight="bold" fill="white" textAnchor="middle">H</text>
+                </g>
+
+ {/* Path Dotted Rider track */}
+             {lastOrderDetails && (
+            <path
+     d="M 140 110 L 180 160"
+         stroke="#000000"
+    strokeWidth="2.5"
+          strokeDasharray="4 4"
+     fill="none"
+         />
+       )}
+
+                {/* Animated Rider Scooter Emoji */}
+                <g transform={`translate(${riderCoords.x}, ${riderCoords.y})`} className="transition-all duration-150">
+                  <circle r="11" fill="white" shadow-md="true" />
+                  <text y="4" fontSize="11" textAnchor="middle" className="animate-bounce">🛵</text>
+                </g>
+              </svg>
+
+              {/* Float Map Overlay Progress */}
+              <div className="absolute top-2 left-2 bg-black/90 text-white px-2.5 py-1 rounded text-[8px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-md">
+                <span className="w-1.5 h-1.5 bg-[#CE1126] rounded-full animate-ping" />
+                <span>KURIR: {riderProgress}% TRANSIT</span>
+              </div>
+            </div>
+
+            {/* Dynamic Status Progress Tracker based on riderProgress */}
+            <div className="text-left bg-slate-50 border border-gray-100 p-4 rounded-2xl text-xs font-bold space-y-3">
+              <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                <span className="text-gray-400">Asal Toko</span>
+                <span className="text-black font-extrabold">{lastOrderDetails.coopName}</span>
               </div>
               <div className="space-y-1">
                 <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Ringkasan Barang</span>
@@ -387,33 +496,43 @@ export default function Home() {
                   ))}
                 </div>
               </div>
-              <div className="flex justify-between border-t border-slate-200/60 pt-2 font-bold text-slate-800">
+
+              {/* Progress Bar */}
+              <div className="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden mt-2">
+                <div
+                  className="bg-[#CE1126] h-full transition-all duration-150"
+                  style={{ width: `${riderProgress}%` }}
+                />
+              </div>
+
+              {/* Bill Details */}
+              <div className="flex justify-between border-t border-gray-150 pt-2.5 font-black text-black">
                 <span>Total Bayar</span>
                 <span className="text-[#CE1126]">Rp {lastOrderDetails.total.toLocaleString("id-ID")}</span>
               </div>
             </div>
 
-            {/* WA Notification message mockup details */}
-            <div className="p-3 bg-emerald-50/50 border border-emerald-100 rounded-xl text-left text-[10px] text-emerald-700 leading-normal flex items-start gap-2.5">
-              <span className="text-lg leading-none shrink-0 mt-0.5">💬</span>
-              <p className="font-medium">
-                <strong>[Simulasi WA]</strong> Pesan notifikasi pemesanan otomatis berhasil di-push ke nomor pengurus koperasi (Fonnte Gateway). Pengurus akan segera memverifikasi dan menyiapkan pesanan Anda.
+            {/* WA Notification simulation details */}
+            <div className="p-3 bg-red-50/50 border border-red-100 rounded-xl text-left text-[10px] text-red-800 leading-normal flex items-start gap-2.5 font-medium">
+              <span className="text-base leading-none">💬</span>
+              <p>
+                <strong>[Simulasi Notifikasi]</strong> Struk pembelian digital telah dikirim ke nomor WhatsApp pengurus Koperasi dan Kurir via Fonnte Gateway API.
               </p>
             </div>
 
             <button
               onClick={() => setCheckoutSuccess(false)}
-              className="w-full bg-[#CE1126] text-white py-3 px-4 font-bold text-xs rounded-xl hover:bg-[#A50E1E] transition-colors shadow-sm cursor-pointer"
+              className="w-full bg-black hover:bg-neutral-800 text-white py-3.5 font-bold text-xs rounded-full transition-all cursor-pointer"
             >
-              Kembali Belanja
+              Tutup & Belanja Lagi
             </button>
           </div>
         </div>
       )}
 
       {/* Footer */}
-      <footer className="py-5 border-t border-slate-100 text-center text-[10px] text-slate-400 bg-white shrink-0 mt-6">
-        &copy; 2026 KopasNow. Hak Cipta Dilindungi Undang-Undang.
+      <footer className="py-6 border-t border-gray-100 text-center text-[10px] text-gray-400 bg-white shrink-0 mt-8 font-medium">
+        &copy; 2026 KopasNow. Semua hak cipta dilindungi undang-undang.
       </footer>
     </div>
   );
