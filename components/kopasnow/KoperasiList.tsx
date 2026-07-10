@@ -61,7 +61,7 @@ export default function KoperasiList({
                 {/* Header */}
                 <div className="flex items-center gap-2 mb-1">
                   {isNearest && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-700 border border-red-100 shrink-0">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100 shrink-0">
                       ⭐ Terdekat
                     </span>
                   )}
@@ -123,8 +123,8 @@ export default function KoperasiList({
                 </span>
 
                 {/* Status dot */}
-                <span className="inline-flex items-center gap-1 text-[10px] text-red-600 font-medium">
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   Aktif
                 </span>
               </div>

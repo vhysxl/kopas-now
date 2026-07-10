@@ -34,7 +34,7 @@ export async function signUpAction(
   const validated = result.output;
   const isEmail = validated.identifier.includes("@");
   const emailValue = isEmail ? validated.identifier.toLowerCase() : "";
-  const normalizedPhone = isEmail ? "" : normalizePhone(validated.identifier);
+  const normalizedPhone = isEmail ? null : normalizePhone(validated.identifier);
 
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
@@ -74,7 +74,7 @@ export async function signUpAction(
     options: {
       data: {
         nama: validated.nama,
-        phone: isEmail ? "" : normalizedPhone,
+        phone: isEmail ? null : normalizedPhone,
       },
     },
   });
@@ -98,7 +98,7 @@ export async function signUpAction(
     user_id: user.id,
     nama: validated.nama,
     email: isEmail ? emailValue : null,
-    phone: isEmail ? "" : normalizedPhone,
+    phone: isEmail ? null : normalizedPhone,
   });
 
   if (insertError) {
