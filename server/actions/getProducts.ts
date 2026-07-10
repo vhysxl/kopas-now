@@ -12,6 +12,7 @@ export interface KopasnowProduct {
   satuan_produk: string;
   stok_tersedia: number;
   foto_url: string | null;
+  kategori_produk: string[] | null;
 }
 
 export async function getAllActiveProducts(): Promise<{
@@ -24,7 +25,7 @@ export async function getAllActiveProducts(): Promise<{
 
     const { data, error } = await supabase
       .from("kopasnow_products")
-      .select("id_produk, koperasi_id, nama_produk, deskripsi_produk, harga_produk, satuan_produk, stok_tersedia, foto_url")
+      .select("id_produk, koperasi_id, nama_produk, deskripsi_produk, harga_produk, satuan_produk, stok_tersedia, foto_url, kategori_produk")
       .eq("is_active", true)
       .order("nama_produk");
 
@@ -50,7 +51,7 @@ export async function getProductsByKoperasiId(koperasiId: string): Promise<{
 
     const { data, error } = await supabase
       .from("kopasnow_products")
-      .select("id_produk, koperasi_id, nama_produk, deskripsi_produk, harga_produk, satuan_produk, stok_tersedia, foto_url")
+      .select("id_produk, koperasi_id, nama_produk, deskripsi_produk, harga_produk, satuan_produk, stok_tersedia, foto_url, kategori_produk")
       .eq("koperasi_id", koperasiId)
       .eq("is_active", true)
       .order("nama_produk");

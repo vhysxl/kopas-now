@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+
+<html lang="id"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>KopasNow - Homepage</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts: Plus Jakarta Sans -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-surface": "#1b1c1c",
+                        "surface-bright": "#fbf9f9",
+                        "surface": "#fbf9f9",
+                        "on-error": "#ffffff",
+                        "surface-container": "#efeded",
+                        "on-secondary-fixed-variant": "#474746",
+                        "primary-container": "#e32500",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-fixed-dim": "#c8c6c5",
+                        "on-secondary": "#ffffff",
+                        "surface-container-high": "#e9e8e7",
+                        "secondary": "#5f5e5e",
+                        "on-primary-fixed": "#3e0400",
+                        "tertiary-fixed-dim": "#72dc93",
+                        "surface-variant": "#e3e2e2",
+                        "inverse-primary": "#ffb4a5",
+                        "surface-container-low": "#f5f3f3",
+                        "on-tertiary-fixed-variant": "#005229",
+                        "on-primary-container": "#fffbff",
+                        "surface-container-highest": "#e3e2e2",
+                        "tertiary-fixed": "#8ff9ad",
+                        "primary-fixed-dim": "#ffb4a5",
+                        "on-secondary-container": "#636262",
+                        "primary": "#b51c00",
+                        "inverse-surface": "#303031",
+                        "error-container": "#ffdad6",
+                        "surface-dim": "#dbdad9",
+                        "error": "#ba1a1a",
+                        "on-background": "#1b1c1c",
+                        "secondary-fixed": "#e5e2e1",
+                        "on-tertiary-fixed": "#00210d",
+                        "background": "#fbf9f9",
+                        "inverse-on-surface": "#f2f0f0",
+                        "surface-tint": "#ba1d00",
+                        "primary-fixed": "#ffdad3",
+                        "outline-variant": "#e9bcb4",
+                        "on-error-container": "#93000a",
+                        "on-tertiary-container": "#f6fff4",
+                        "outline": "#936e67",
+                        "on-secondary-fixed": "#1c1b1b",
+                        "on-primary-fixed-variant": "#8e1400",
+                        "tertiary-container": "#098648",
+                        "on-surface-variant": "#5e3f39",
+                        "tertiary": "#006a37",
+                        "on-primary": "#ffffff",
+                        "secondary-container": "#e2dfde"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-lg": "24px",
+                        "margin-page": "16px",
+                        "stack-sm": "8px",
+                        "section-gap": "32px",
+                        "gutter-grid": "12px",
+                        "stack-md": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-sm": ["Plus Jakarta Sans"],
+                        "body-md": ["Plus Jakarta Sans"],
+                        "body-lg": ["Plus Jakarta Sans"],
+                        "label-sm": ["Plus Jakarta Sans"],
+                        "label-lg": ["Plus Jakarta Sans"],
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "headline-sm": ["16px", { "lineHeight": "22px", "fontWeight": "700" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.2px", "fontWeight": "500" }],
+                        "label-lg": ["14px", { "lineHeight": "18px", "fontWeight": "600" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "700" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "headline-lg": ["30px", { "lineHeight": "38px", "letterSpacing": "-0.5px", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined[data-weight="fill"] {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex flex-col">
+<!-- TopNavBar -->
+<header class="bg-surface dark:bg-surface-dim text-primary dark:text-primary-fixed-dim font-body-md text-body-md w-full sticky top-0 z-50 border-b border-surface-variant dark:border-outline-variant shadow-sm transition-all duration-200">
+<div class="flex items-center justify-between px-margin-page py-stack-sm max-w-screen-xl mx-auto w-full">
+<!-- Brand & Search Left -->
+<div class="flex items-center gap-stack-lg flex-1">
+<a class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed-dim flex items-center gap-2" href="#">
+<span class="material-symbols-outlined" data-weight="fill">storefront</span>
+                    KopasNow
+                </a>
+<!-- Search Bar -->
+<div class="hidden md:flex flex-1 max-w-xl relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-full py-2 pl-10 pr-4 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-on-surface" placeholder="Cari produk atau koperasi..." type="text"/>
+</div>
+</div>
+<!-- Right Actions -->
+<div class="flex items-center gap-stack-sm md:gap-stack-md">
+<button class="flex items-center gap-1 text-secondary hover:text-primary transition-colors hover:bg-surface-container-low dark:hover:bg-surface-container-highest px-3 py-2 rounded-full hidden md:flex">
+<span class="material-symbols-outlined">location_on</span>
+<span class="font-label-lg text-label-lg">Pilih Lokasi</span>
+<span class="material-symbols-outlined text-[16px]">expand_more</span>
+</button>
+<div class="flex gap-2">
+<button class="p-2 text-secondary hover:text-primary transition-colors hover:bg-surface-container-low dark:hover:bg-surface-container-highest rounded-full relative">
+<span class="material-symbols-outlined">shopping_cart</span>
+</button>
+<button class="p-2 text-secondary hover:text-primary transition-colors hover:bg-surface-container-low dark:hover:bg-surface-container-highest rounded-full">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+</div>
+<button class="bg-primary hover:bg-primary-container text-on-primary font-label-lg text-label-lg px-6 py-2 rounded-full transition-colors hidden md:block">
+                    Masuk
+                </button>
+<!-- Mobile Menu Toggle -->
+<button class="md:hidden p-2 text-on-surface">
+<span class="material-symbols-outlined">menu</span>
+</button>
+</div>
+</div>
+</header>
+<div class="flex flex-1 w-full">
+<!-- Main Content -->
+<main class="flex-1 p-margin-page md:p-stack-lg overflow-x-hidden max-w-screen-xl mx-auto w-full">
+<!-- Hero Banner -->
+<section class="w-full rounded-xl overflow-hidden relative min-h-[250px] md:min-h-[350px] flex items-center mb-section-gap">
+<div class="absolute inset-0 bg-cover bg-center" data-alt="A high-quality, ultra-realistic e-commerce hero banner background featuring dynamic red and white confetti, subtle traditional Indonesian motifs, and a bright, modern lighting setup. The style is pristine, corporate, and highly energetic, evoking a festive Independence Day sale in a professional light-mode aesthetic." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCIIVZ1tI8WsfkczYq-QWD1pWnqhTI8cNmcHF-WeVkY2dh6t_4sgYEOztqTvfymO9ugwI-1w1Lmq7zZQFBgnjgJzGGbNZGut8DZ-k_JiZkEbLccdPcDS_3VY6qtdPmK8V_o5yBGzV0tsr2cCcdqSyVG8kbLvHLZMMAlxVESA6d00ga6WfTsKS_6ZaNMc_ztVnB6SjOOw9fTsvGBA3lW3Z9Tmsgcj1d9H0rlUOtAwHzWwB1ttZsyDo2aQw')"></div>
+<div class="absolute inset-0 bg-gradient-to-r from-primary-container/90 to-transparent"></div>
+<div class="relative z-10 p-stack-lg md:p-12 max-w-2xl text-on-primary-container">
+<span class="bg-surface-container-lowest text-primary font-label-sm px-3 py-1 rounded-full uppercase tracking-wider mb-4 inline-block">Spesial Agustus</span>
+<h1 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg font-bold mb-4">Promo Merdeka!</h1>
+<p class="font-body-lg text-body-lg mb-6 opacity-90">Dapatkan diskon hingga 45% untuk kebutuhan pokok dari Koperasi terdekat. Dukung ekonomi desa, nikmati harga hemat.</p>
+<button class="bg-surface-container-lowest text-primary hover:bg-surface font-label-lg px-8 py-3 rounded-full transition-colors shadow-sm">
+                        Belanja Sekarang
+                    </button>
+</div>
+</section>
+<!-- Koperasi Terdekat -->
+<section class="mb-section-gap">
+<div class="flex items-center justify-between mb-stack-md">
+<h2 class="font-headline-md text-headline-md text-on-surface">Koperasi Terdekat</h2>
+<a class="text-primary font-label-lg hover:underline" href="#">Lihat Peta</a>
+</div>
+<div class="bg-surface-container-lowest border border-surface-variant rounded-xl overflow-hidden flex flex-col lg:flex-row shadow-sm">
+<!-- Map Side -->
+<div class="w-full lg:w-1/2 h-64 lg:h-auto relative bg-surface-container-low">
+<img alt="Map" class="w-full h-full object-cover" data-location="Jakarta" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBj3tG8dhtlZPL8FInivdLxDfOmhrzttmnPHn4Dw_6Ibs13nidhX3XDBsJwaM-Cn8z-0Kx8mT44J0RPLAFZvL7VUB6PiObV4RPNSHlSbazuBJI9chg-M9PnanggtcKdnSSjXrePmbHrZ6_34JiP21gIfPvJi-opaLRO9PMS9dW9atQ7q6_4X77FVnO5TGVGbMOagmD4JtEHceOtXV1k0LqyU7OJ54QgvO0CDazEs--MeQKXrboXuLCGBw"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent lg:hidden"></div>
+<!-- Mock Map Pin -->
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
+<div class="bg-primary text-on-primary p-2 rounded-full shadow-lg relative z-10">
+<span class="material-symbols-outlined" data-weight="fill">storefront</span>
+</div>
+<div class="w-4 h-4 bg-primary rotate-45 -mt-2"></div>
+</div>
+</div>
+<!-- List Side -->
+<div class="w-full lg:w-1/2 p-stack-md lg:p-stack-lg flex flex-col gap-stack-md">
+<!-- Item 1 -->
+<div class="flex gap-4 p-3 rounded-lg border border-surface-variant hover:border-primary/30 hover:bg-surface-container-low transition-colors cursor-pointer">
+<div class="w-16 h-16 rounded-lg bg-surface-variant shrink-0 flex items-center justify-center overflow-hidden">
+<div class="w-full h-full bg-cover bg-center" data-alt="A clean, bright photo of a modern, well-organized village cooperative storefront (Koperasi) in Indonesia, daytime, sunny lighting, professional architectural photography." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCubzdPlybsGWQYiCtg0yLwPpxOFoxeRrtvu5si2q2tGqIradzyhl_S91QudFIrePb8fFjfbyT8txZHWimcXM_Ui4QpEe4Hjexm1R5S9UPUu1wQ1FSds5F9REM85CStbYwe0XPgSO59lx8nd_DYQT3EeCbQMSxXxX3Aa22vlG5xyl1wG97E5RSgPPKoSU8bcfzS8ExcVUXyWI-a2ZEOulJ7vilbkg2fWf8ROnrhRh85fdp8vZogIXYJjA')"></div>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-start">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Koperasi Jababeka Utama</h3>
+<span class="bg-tertiary-container/20 text-tertiary font-label-sm px-2 py-0.5 rounded-full">Buka</span>
+</div>
+<p class="text-secondary font-body-md text-sm mt-1">Jl. Pendidikan No. 42, Desa Mekar</p>
+<div class="flex items-center gap-1 mt-2 text-on-surface-variant font-label-sm">
+<span class="material-symbols-outlined text-[16px]">location_on</span>
+<span>1.2 km</span>
+<span class="mx-1">•</span>
+<span class="material-symbols-outlined text-[16px] text-tertiary">local_shipping</span>
+<span class="text-tertiary">Gratis Ongkir</span>
+</div>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="flex gap-4 p-3 rounded-lg border border-surface-variant hover:border-primary/30 hover:bg-surface-container-low transition-colors cursor-pointer">
+<div class="w-16 h-16 rounded-lg bg-surface-variant shrink-0 flex items-center justify-center overflow-hidden">
+<div class="w-full h-full bg-cover bg-center" data-alt="A clean, bright photo of a traditional but tidy Indonesian grocery cooperative (Koperasi Sembako) with neatly stacked rice sacks and cooking oil, soft natural lighting." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBb21L72yflcsTZCvWNfWT5J29qx415Dq9B3amvTz26-AI-O0VcEjnIYvschn1bzaIR55qKoARNhzThBm8DwPtXEEn7tXeGM-0k8KR--nW4Bzi1Fb-OtRqizyFZOPp0IUXKSxM-WsmDltDcqqfA78_FMaAwGzdZXaLOvRQcu0jtToGilHYo4dCK0R5inqqeJhjcDU4lxidZbtUFaiLEN10kwnuDXUXfMqyzcoZQVvHvhMu4rqbVSPmnig')"></div>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-start">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Koperasi Tani Makmur</h3>
+<span class="bg-tertiary-container/20 text-tertiary font-label-sm px-2 py-0.5 rounded-full">Buka</span>
+</div>
+<p class="text-secondary font-body-md text-sm mt-1">Jl. Raya Pertanian km 2</p>
+<div class="flex items-center gap-1 mt-2 text-on-surface-variant font-label-sm">
+<span class="material-symbols-outlined text-[16px]">location_on</span>
+<span>3.5 km</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Kategori -->
+<section class="mb-section-gap">
+<h2 class="font-headline-md text-headline-md text-on-surface mb-stack-md text-center md:text-left">Kategori</h2>
+<div class="flex overflow-x-auto pb-4 gap-4 md:gap-8 hide-scrollbar md:flex-wrap">
+<!-- Sembako -->
+<a class="flex flex-col items-center gap-3 min-w-[80px] group" href="#">
+<div class="w-16 h-16 md:w-20 md:h-20 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center shadow-sm transition-transform group-hover:scale-105">
+<span class="material-symbols-outlined text-3xl md:text-4xl" data-weight="fill">shopping_basket</span>
+</div>
+<span class="text-on-surface font-label-sm text-center font-bold">Sembako</span>
+</a>
+<!-- Alat Tulis -->
+<a class="flex flex-col items-center gap-3 min-w-[80px] group" href="#">
+<div class="w-16 h-16 md:w-20 md:h-20 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center shadow-sm transition-transform group-hover:scale-105 group-hover:bg-primary-container group-hover:text-on-primary-container">
+<span class="material-symbols-outlined text-3xl md:text-4xl">edit</span>
+</div>
+<span class="text-on-surface-variant font-label-sm text-center group-hover:text-on-surface group-hover:font-bold transition-all">Alat Tulis</span>
+</a>
+<!-- Peralatan Rumah -->
+<a class="flex flex-col items-center gap-3 min-w-[80px] group" href="#">
+<div class="w-16 h-16 md:w-20 md:h-20 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center shadow-sm transition-transform group-hover:scale-105 group-hover:bg-primary-container group-hover:text-on-primary-container">
+<span class="material-symbols-outlined text-3xl md:text-4xl">home_repair_service</span>
+</div>
+<span class="text-on-surface-variant font-label-sm text-center group-hover:text-on-surface group-hover:font-bold transition-all line-clamp-2">Peralatan Rumah</span>
+</a>
+<!-- Produk Segar -->
+<a class="flex flex-col items-center gap-3 min-w-[80px] group" href="#">
+<div class="w-16 h-16 md:w-20 md:h-20 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center shadow-sm transition-transform group-hover:scale-105 group-hover:bg-primary-container group-hover:text-on-primary-container">
+<span class="material-symbols-outlined text-3xl md:text-4xl">eco</span>
+</div>
+<span class="text-on-surface-variant font-label-sm text-center group-hover:text-on-surface group-hover:font-bold transition-all">Produk Segar</span>
+</a>
+<!-- Kesehatan -->
+<a class="flex flex-col items-center gap-3 min-w-[80px] group" href="#">
+<div class="w-16 h-16 md:w-20 md:h-20 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center shadow-sm transition-transform group-hover:scale-105 group-hover:bg-primary-container group-hover:text-on-primary-container">
+<span class="material-symbols-outlined text-3xl md:text-4xl">medical_services</span>
+</div>
+<span class="text-on-surface-variant font-label-sm text-center group-hover:text-on-surface group-hover:font-bold transition-all">Kesehatan</span>
+</a>
+<!-- Pakan Ternak -->
+<a class="flex flex-col items-center gap-3 min-w-[80px] group" href="#">
+<div class="w-16 h-16 md:w-20 md:h-20 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center shadow-sm transition-transform group-hover:scale-105 group-hover:bg-primary-container group-hover:text-on-primary-container">
+<span class="material-symbols-outlined text-3xl md:text-4xl">pets</span>
+</div>
+<span class="text-on-surface-variant font-label-sm text-center group-hover:text-on-surface group-hover:font-bold transition-all">Pakan Ternak</span>
+</a>
+<!-- Promo -->
+<a class="flex flex-col items-center gap-3 min-w-[80px] group" href="#">
+<div class="w-16 h-16 md:w-20 md:h-20 rounded-full bg-tertiary-container text-on-tertiary-container flex items-center justify-center shadow-sm transition-transform group-hover:scale-105">
+<span class="material-symbols-outlined text-3xl md:text-4xl">local_offer</span>
+</div>
+<span class="text-on-surface-variant font-label-sm text-center group-hover:text-on-surface group-hover:font-bold transition-all">Promo</span>
+</a>
+</div>
+</section>
+<!-- Product Recommendations -->
+<section class="mb-section-gap">
+<div class="flex items-center justify-between mb-stack-md">
+<h2 class="font-headline-md text-headline-md text-on-surface">Rekomendasi Sembako</h2>
+<a class="text-primary font-label-lg hover:underline" href="#">Lihat Semua</a>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-gutter-grid md:gap-stack-md">
+<!-- Product 1 -->
+<div class="bg-surface-container-lowest border border-surface-variant rounded-xl overflow-hidden hover:shadow-md transition-shadow group flex flex-col">
+<div class="aspect-square w-full relative bg-surface-container-low overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="A premium 5kg sack of white rice (Beras Premium) isolated on a crisp white background, studio lighting, highly detailed, clean corporate product photography aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDIPJ4HI0ZwpWO22quURds2NpQBIZWiyOF4ut5odR0uP2LfJDDD2r0kzorLrypKGyU3PFgtMulQb33SD4NDU-GW82JWUfmq7jA9QFJIELuDbXQspXLvohkyTR3N87rzMOJPb9f_SS_hFq0tEYaSAuiCzJTQ8gwUyRW_5V43FhH9hL-Ub6qFEaVChfxcR0aCSLrZ0tK98Y7J2SE07opROxvdjXv4fzu2tW-QLNgyTSfh9INkAA8zLtusQg"/>
+<span class="absolute top-2 left-2 bg-error text-on-error font-label-sm px-2 py-1 rounded-full text-[10px] uppercase font-bold">-10%</span>
+</div>
+<div class="p-3 flex flex-col flex-1">
+<h3 class="font-body-md text-body-md text-on-surface line-clamp-2 mb-1">Beras Premium Pandan Wangi 5kg</h3>
+<p class="text-secondary font-label-sm mb-3">Koperasi Jababeka</p>
+<div class="mt-auto flex items-center justify-between">
+<div>
+<p class="text-secondary line-through text-xs">Rp 75.000</p>
+<p class="font-headline-sm text-headline-sm text-tertiary">Rp 67.500</p>
+</div>
+<button class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center hover:bg-primary hover:text-on-primary transition-colors">
+<span class="material-symbols-outlined">add</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Product 2 -->
+<div class="bg-surface-container-lowest border border-surface-variant rounded-xl overflow-hidden hover:shadow-md transition-shadow group flex flex-col">
+<div class="aspect-square w-full relative bg-surface-container-low overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="A 2-liter pouch of cooking oil (Minyak Goreng) standing upright, isolated on a bright white background, professional studio product shot, vibrant colors." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC28MB746g5kp4-zQS00tNFmPSsZvPKia6DAK0ai8W7PVKvStrxiqgDruxPQJMbbecArJ_zflTIrUUyKJ-fFbtwgTWKb1E2vWb99A3YtdHd6x9KtzJ3VhDduNrAJBScZIG6P531_1oXV0AfhZ_Hnma8jBgPpvF_EsYzPbd5a2UrtY3A5fsYHtr4JXcYt08c_gJ7OR6THPWahfPRP7qlClm15IdQUWBx66up30F7r-IrE67mD33UFZdA-Q"/>
+</div>
+<div class="p-3 flex flex-col flex-1">
+<h3 class="font-body-md text-body-md text-on-surface line-clamp-2 mb-1">Minyak Goreng Sawit 2L</h3>
+<p class="text-secondary font-label-sm mb-3">Koperasi Mekar Sari</p>
+<div class="mt-auto flex items-center justify-between">
+<div>
+<p class="font-headline-sm text-headline-sm text-on-surface">Rp 32.000</p>
+</div>
+<button class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center hover:bg-primary hover:text-on-primary transition-colors">
+<span class="material-symbols-outlined">add</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Product 3 -->
+<div class="bg-surface-container-lowest border border-surface-variant rounded-xl overflow-hidden hover:shadow-md transition-shadow group flex flex-col">
+<div class="aspect-square w-full relative bg-surface-container-low overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="A brightly colored sack of NPK agricultural fertilizer (Pupuk NPK), clean product photography on a stark white background, well-lit, professional light-mode aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAY9gQK8j7EQmeaWIbMsry1JjQdj1LRn8zAyGqguXXOKEr_gqA8jD-t7tuXRRVjAjGOcIGiTZ-hbfnNi58J2hzuWbmoutj3vCMs3STJdPzjrwIfPxZQPFyoqRVxgh1nq5h6gTeLIbZUVdhVjmLDzXyfXSnQn6rUqdNaB0k6mnDpHse45dkM0Ij_3c2pNOmJUC5gh9s2Npx4aaEjjrmKTEO4k6FY7mvPM5BVaLLay-Bw0lEQOkH13K8lJQ"/>
+</div>
+<div class="p-3 flex flex-col flex-1">
+<h3 class="font-body-md text-body-md text-on-surface line-clamp-2 mb-1">Pupuk NPK Mutiara 16-16-16 1kg</h3>
+<p class="text-secondary font-label-sm mb-3">Koperasi Tani Makmur</p>
+<div class="mt-auto flex items-center justify-between">
+<div>
+<p class="font-headline-sm text-headline-sm text-on-surface">Rp 18.500</p>
+</div>
+<button class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center hover:bg-primary hover:text-on-primary transition-colors">
+<span class="material-symbols-outlined">add</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Product 4 -->
+<div class="bg-surface-container-lowest border border-surface-variant rounded-xl overflow-hidden hover:shadow-md transition-shadow group flex flex-col">
+<div class="aspect-square w-full relative bg-surface-container-low overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="A small, modern foil packet of tomato seeds (Bibit Tomat) showing a picture of ripe red tomatoes, clean white background, high contrast, studio lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAfJO-i6T8U8aPEQjyKzMSjBBo0vg_aOvoO7dGAx4ZvAb0Fn9ZjQP6KIPbJIO6mMu2QsgIs-pxosDEOjZjzKvEiTee-otZcSBkjvxUbWF8w4esT4KsX_XJBi-hNfmA3pTvI264lsHfz5oWtV5g6kGXtA6DBfI26qvOfMXDpcMXH04sTSZmmqybIxHJZom_glWKP3pbLz9R7dPsQFvE49zWyNs-KTH7OIlNQIqAKKtGeaOQNZNSZPCsyMA"/>
+</div>
+<div class="p-3 flex flex-col flex-1">
+<h3 class="font-body-md text-body-md text-on-surface line-clamp-2 mb-1">Bibit Tomat Unggul F1</h3>
+<p class="text-secondary font-label-sm mb-3">Koperasi Tani Makmur</p>
+<div class="mt-auto flex items-center justify-between">
+<div>
+<p class="font-headline-sm text-headline-sm text-on-surface">Rp 12.000</p>
+</div>
+<button class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center hover:bg-primary hover:text-on-primary transition-colors">
+<span class="material-symbols-outlined">add</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+</div>
+<!-- Footer -->
+<footer class="bg-on-surface dark:bg-surface-container-lowest text-primary-fixed dark:text-primary font-label-sm text-label-sm w-full mt-auto">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-stack-lg px-margin-page py-section-gap text-surface-bright max-w-screen-xl mx-auto">
+<!-- Brand Info -->
+<div class="md:col-span-1 flex flex-col gap-4">
+<span class="font-headline-sm text-headline-sm text-surface-bright flex items-center gap-2">
+<span class="material-symbols-outlined" data-weight="fill">storefront</span>
+                    KopasNow
+                </span>
+<p class="text-surface-variant">Platform digital untuk Koperasi Indonesia. Memberdayakan ekonomi lokal dengan teknologi modern.</p>
+<div class="flex gap-4 mt-2">
+<!-- Social placeholders -->
+<div class="w-8 h-8 rounded-full bg-surface-variant/20 flex items-center justify-center hover:bg-surface-variant/40 cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-[18px]">public</span>
+</div>
+<div class="w-8 h-8 rounded-full bg-surface-variant/20 flex items-center justify-center hover:bg-surface-variant/40 cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-[18px]">share</span>
+</div>
+</div>
+</div>
+<!-- Links -->
+<div class="md:col-span-3 grid grid-cols-2 md:grid-cols-3 gap-8">
+<div class="flex flex-col gap-3">
+<h4 class="font-headline-sm text-surface-bright mb-2">Perusahaan</h4>
+<a class="text-surface-variant hover:text-surface-bright transition-opacity duration-300 hover:opacity-80" href="#">Tentang Kami</a>
+<a class="text-surface-variant hover:text-surface-bright transition-opacity duration-300 hover:opacity-80" href="#">Karir</a>
+<a class="text-surface-variant hover:text-surface-bright transition-opacity duration-300 hover:opacity-80" href="#">Blog</a>
+</div>
+<div class="flex flex-col gap-3">
+<h4 class="font-headline-sm text-surface-bright mb-2">Bantuan</h4>
+<a class="text-surface-variant hover:text-surface-bright transition-opacity duration-300 hover:opacity-80" href="#">Syarat &amp; Ketentuan</a>
+<a class="text-surface-variant hover:text-surface-bright transition-opacity duration-300 hover:opacity-80" href="#">Kebijakan Privasi</a>
+<a class="text-surface-variant hover:text-surface-bright transition-opacity duration-300 hover:opacity-80" href="#">Hubungi Kami</a>
+</div>
+<div class="flex flex-col gap-3 col-span-2 md:col-span-1">
+<h4 class="font-headline-sm text-surface-bright mb-2">Unduh Aplikasi</h4>
+<div class="flex flex-col gap-2">
+<button class="bg-surface-variant/20 border border-surface-variant/30 rounded-lg px-4 py-2 flex items-center gap-2 hover:bg-surface-variant/40 transition-colors">
+<span class="material-symbols-outlined">android</span>
+<div class="text-left">
+<span class="block text-[10px] text-surface-variant">Get it on</span>
+<span class="block font-bold text-sm">Google Play</span>
+</div>
+</button>
+</div>
+</div>
+</div>
+</div>
+<div class="border-t border-surface-variant/20 px-margin-page py-6 max-w-screen-xl mx-auto flex flex-col md:flex-row items-center justify-between">
+<p class="text-surface-variant">© 2024 KopasNow. Memberdayakan Ekonomi Desa.</p>
+</div>
+</footer>
+</body></html>
