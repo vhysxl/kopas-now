@@ -203,3 +203,47 @@ export async function getLocationName(lat: number, lng: number): Promise<string 
     return null;
   }
 }
+
+export interface GeocodedCity {
+  lat: number;
+  lng: number;
+  label: string;
+}
+
+/**
+ * Forward-geocode a city/town name typed by the user to coordinates.
+ * Used when the user hasn't granted GPS access but wants nearby koperasi
+ * for a city they type in manually. Scoped to Indonesia.
+ */
+export async function geocodeCity(query: string): Promise<GeocodedCity | null> {
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+      query
+    )}&countrycodes=id&limit=1&addressdetails=1`;
+    const response = await fetch(url, {
+      headers: {
+        "Accept-Language": "id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7",
+      },
+    });
+
+    if (!response.ok) return null;
+
+    const data = await response.json();
+    if (!Array.isArray(data) || data.length === 0) return null;
+
+    const first = data[0];
+    const lat = parseFloat(first.lat);
+    const lng = parseFloat(first.lon);
+    if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
+
+    const addr = first.address || {};
+    const label: string =
+      addr.city || addr.town || addr.municipality || addr.village || addr.county ||
+      first.display_name?.split(",")[0] || query;
+
+    return { lat, lng, label };
+  } catch (error) {
+    console.error("Forward geocoding error:", error);
+    return null;
+  }
+}

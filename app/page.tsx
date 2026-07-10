@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, type FormEvent } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useUserStore } from "@/store/useUserStore";
 import { useCartStore, cartTotalItems } from "@/store/useCartStore";
 import { getKoperasiList } from "@/server/actions/getKoperasi";
 import { getAllActiveProducts, type KopasnowProduct } from "@/server/actions/getProducts";
-import { sortByDistance, getLocationName } from "@/utils/helper/geo";
+import { sortByDistance, getLocationName, geocodeCity, formatDistance } from "@/utils/helper/geo";
 import type { KoperasiLocation } from "@/utils/helper/geo";
 import BottomNav from "@/components/kopasnow/BottomNav";
 
@@ -28,6 +28,9 @@ const KoperasiMap = dynamic(
 const LOCATION_CONSENT_KEY = "kopasnow-izin-lokasi";
 type LocationConsent = "unknown" | "granted" | "denied";
 
+// Saat titik acuan diketahui, hanya koperasi dalam radius ini yang ditampilkan
+const NEARBY_RADIUS_KM = 5;
+
 const CATEGORIES = [
   { key: "sembako", label: "Sembako", icon: "shopping_basket", activeClass: "bg-primary-container text-on-primary-container" },
   { key: "alat tulis", label: "Alat Tulis", icon: "edit", activeClass: "bg-primary-container text-on-primary-container" },
@@ -38,16 +41,13 @@ const CATEGORIES = [
   { key: "promo", label: "Promo", icon: "local_offer", activeClass: "bg-tertiary-container text-on-tertiary-container" },
 ];
 
-const matchCategory = (tags: string[] | null, catKey: string, productId: string) => {
-  if (catKey === "promo") {
-    const lastChar = productId.slice(-1);
-    const code = lastChar.charCodeAt(0);
-    const isMockDiscount = code % 2 === 0;
-    const hasPromoTag = tags ? tags.map(t => t.toLowerCase()).some(t => t.includes("promo")) : false;
-    return isMockDiscount || hasPromoTag;
-  }
-
+const matchCategory = (tags: string[] | null, catKey: string) => {
   if (!tags) return false;
+  const lowerTagsForPromo = tags.map((t) => t.toLowerCase());
+
+  if (catKey === "promo") {
+    return lowerTagsForPromo.some((t) => t.includes("promo"));
+  }
   const lowerTags = tags.map((t) => t.toLowerCase());
 
   if (catKey === "sembako") {
@@ -93,10 +93,21 @@ export default function Home() {
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showMap, setShowMap] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Pencarian kota manual — selalu tersedia, termasuk saat GPS sudah aktif
+  const [cityQuery, setCityQuery] = useState("");
+  const [citySearchLocation, setCitySearchLocation] = useState<[number, number] | null>(null);
+  const [citySearchLabel, setCitySearchLabel] = useState<string | null>(null);
+  const [isGeocodingCity, setIsGeocodingCity] = useState(false);
+  const [cityError, setCityError] = useState<string | null>(null);
+
+  // Koperasi yang sedang disorot (marker kuning di peta)
+  const [selectedKoperasiId, setSelectedKoperasiId] = useState<string | null>(null);
+  // Pengguna memilih melihat semua koperasi, mengabaikan batas radius
+  const [ignoreRadius, setIgnoreRadius] = useState(false);
 
   const nama = customer?.nama || user?.email?.split("@")[0] || "Anggota";
   const totalCartItems = cartHydrated ? cartTotalItems(cartItems) : 0;
@@ -138,16 +149,38 @@ export default function Home() {
     fetchData();
   }, []);
 
-  // Urutkan dari yang terdekat begitu lokasi pengguna diketahui
+  // Titik acuan jarak: kota yang diketik manual menang, karena itu pilihan
+  // sadar pengguna untuk melihat daerah lain. Kalau tidak ada, pakai GPS.
+  // Kalau dua-duanya kosong, semua koperasi ditampilkan tanpa urutan jarak.
+  const effectiveLocation = citySearchLocation ?? userLocation;
+  const hasLocation = !!effectiveLocation;
+  const isViewingOtherCity = !!citySearchLocation;
+
+  // Urutkan dari yang terdekat begitu titik acuan diketahui
   const sortedList = useMemo(() => {
-    if (userLocation && koperasiList.length > 0) {
-      return sortByDistance(koperasiList, userLocation[0], userLocation[1]);
+    if (effectiveLocation && koperasiList.length > 0) {
+      return sortByDistance(koperasiList, effectiveLocation[0], effectiveLocation[1]);
     }
     return koperasiList.map((k) => ({ ...k, distance: 0 }));
-  }, [koperasiList, userLocation]);
+  }, [koperasiList, effectiveLocation]);
+
+  // Batasi ke koperasi dalam radius saat titik acuan diketahui
+  const radiusList = useMemo(() => {
+    if (!hasLocation || ignoreRadius) return sortedList;
+    return sortedList.filter((k) => k.distance <= NEARBY_RADIUS_KM);
+  }, [sortedList, hasLocation, ignoreRadius]);
+
+  // Tidak ada koperasi dalam radius, padahal titik acuan sudah diketahui
+  const noKoperasiInRadius =
+    hasLocation && !ignoreRadius && sortedList.length > 0 && radiusList.length === 0;
 
   const handleUserLocationChange = useCallback(async (lat: number, lng: number) => {
     setUserLocation([lat, lng]);
+    // Menemukan posisi sendiri berarti kembali ke lokasi sendiri:
+    // batalkan pencarian kota supaya titik acuannya tidak tertahan di kota lain.
+    setCitySearchLocation(null);
+    setCitySearchLabel(null);
+    setCityQuery("");
     const locName = await getLocationName(lat, lng);
     if (locName) {
       setLocationName(locName);
@@ -182,6 +215,45 @@ export default function Home() {
     setLocationConsent("denied");
   }, []);
 
+  // Cari koperasi terdekat dari kota yang diketik manual.
+  // Tersedia kapan saja, termasuk saat GPS aktif, supaya pengguna bisa
+  // melihat koperasi di daerah lain (mis. kampung halaman).
+  const handleCitySearch = useCallback(async (e: FormEvent) => {
+    e.preventDefault();
+    const query = cityQuery.trim();
+    if (!query) return;
+
+    setIsGeocodingCity(true);
+    setCityError(null);
+    const result = await geocodeCity(query);
+    setIsGeocodingCity(false);
+
+    if (!result) {
+      setCitySearchLocation(null);
+      setCitySearchLabel(null);
+      setCityError(`Kota "${query}" tidak ditemukan. Coba nama kota lain, contoh: Cikarang.`);
+      return;
+    }
+
+    setCitySearchLocation([result.lat, result.lng]);
+    setCitySearchLabel(result.label);
+    setSelectedKoperasiId(null);
+    setIgnoreRadius(false);
+  }, [cityQuery]);
+
+  const handleClearCitySearch = useCallback(() => {
+    setCityQuery("");
+    setCitySearchLocation(null);
+    setCitySearchLabel(null);
+    setCityError(null);
+    setSelectedKoperasiId(null);
+    setIgnoreRadius(false);
+  }, []);
+
+  const handleSelectKoperasi = useCallback((id: string) => {
+    setSelectedKoperasiId((prev) => (prev === id ? null : id));
+  }, []);
+
   // Pulihkan keputusan izin lokasi; jika sudah pernah setuju,
   // langsung minta posisi tanpa menampilkan kartu persetujuan lagi
   useEffect(() => {
@@ -197,15 +269,15 @@ export default function Home() {
     restoreConsent();
   }, [requestLocation]);
 
-  // Saring daftar koperasi berdasarkan kategori dan kata pencarian
+  // Saring daftar koperasi (yang sudah dibatasi radius) berdasarkan kategori dan pencarian
   const filteredList = useMemo(() => {
-    let list = sortedList;
+    let list = radiusList;
 
     // Saring berdasarkan kategori aktif
     if (activeCategory) {
       list = list.filter((k) => {
         const products = productsByKoperasi[k.id] || [];
-        return products.some((p) => matchCategory(p.kategori_produk, activeCategory, p.id_produk));
+        return products.some((p) => matchCategory(p.kategori_produk, activeCategory));
       });
     }
 
@@ -218,7 +290,7 @@ export default function Home() {
       const products = productsByKoperasi[k.id] || [];
       return products.some((p) => p.nama_produk.toLowerCase().includes(query));
     });
-  }, [sortedList, productsByKoperasi, searchQuery, activeCategory]);
+  }, [radiusList, productsByKoperasi, searchQuery, activeCategory]);
 
   // Saring rekomendasi produk
   const recommendedProducts = useMemo(() => {
@@ -226,7 +298,7 @@ export default function Home() {
 
     // Filter kategori
     if (activeCategory) {
-      list = list.filter((p) => matchCategory(p.kategori_produk, activeCategory, p.id_produk));
+      list = list.filter((p) => matchCategory(p.kategori_produk, activeCategory));
     }
 
     // Filter pencarian
@@ -242,35 +314,7 @@ export default function Home() {
     setActiveCategory((prev) => (prev === categoryKey ? null : categoryKey));
   };
 
-  // Gambar representasi produk fungsional (fallback premium dari code.html)
-  const getProductImage = (name: string, customUrl: string | null) => {
-    const lower = name.toLowerCase();
-    if (lower.includes("beras")) {
-      return "https://lh3.googleusercontent.com/aida-public/AB6AXuDIPJ4HI0ZwpWO22quURds2NpQBIZWiyOF4ut5odR0uP2LfJDDD2r0kzorLrypKGyU3PFgtMulQb33SD4NDU-GW82JWUfmq7jA9QFJIELuDbXQspXLvohkyTR3N87rzMOJPb9f_SS_hFq0tEYaSAuiCzJTQ8gwUyRW_5V43FhH9hL-Ub6qFEaVChfxcR0aCSLrZ0tK98Y7J2SE07opROxvdjXv4fzu2tW-QLNgyTSfh9INkAA8zLtusQg";
-    }
-    if (lower.includes("minyak")) {
-      return "https://lh3.googleusercontent.com/aida-public/AB6AXuC28MB746g5kp4-zQS00tNFmPSsZvPKia6DAK0ai8W7PVKvStrxiqgDruxPQJMbbecArJ_zflTIrUUyKJ-fFbtwgTWKb1E2vWb99A3YtdHd6x9KtzJ3VhDduNrAJBScZIG6P531_1oXV0AfhZ_Hnma8jBgPpvF_EsYzPbd5a2UrtY3A5fsYHtr4JXcYt08c_gJ7OR6THPWahfPRP7qlClm15IdQUWBx66up30F7r-IrE67mD33UFZdA-Q";
-    }
-    if (lower.includes("pupuk")) {
-      return "https://lh3.googleusercontent.com/aida-public/AB6AXuAY9gQK8j7EQmeaWIbMsry1JjQdj1LRn8zAyGqguXXOKEr_gqA8jD-t7tuXRRVjAjGOcIGiTZ-hbfnNi58J2hzuWbmoutj3vCMs3STJdPzjrwIfPxZQPFyoqRVxgh1nq5h6gTeLIbZUVdhVjmLDzXyfXSnQn6rUqdNaB0k6mnDpHse45dkM0Ij_3c2pNOmJUC5gh9s2Npx4aaEjjrmKTEO4k6FY7mvPM5BVaLLay-Bw0lEQOkH13K8lJQ";
-    }
-    if (lower.includes("bibit") || lower.includes("biji") || lower.includes("tomat")) {
-      return "https://lh3.googleusercontent.com/aida-public/AB6AXuAfJO-i6T8U8aPEQjyKzMSjBBo0vg_aOvoO7dGAx4ZvAb0Fn9ZjQP6KIPbJIO6mMu2QsgIs-pxosDEOjZjzKvEiTee-otZcSBkjvxUbWF8w4esT4KsX_XJBi-hNfmA3pTvI264lsHfz5oWtV5g6kGXtA6DBfI26qvOfMXDpcMXH04sTSZmmqybIxHJZom_glWKP3pbLz9R7dPsQFvE49zWyNs-KTH7OIlNQIqAKKtGeaOQNZNSZPCsyMA";
-    }
-    if (customUrl && !customUrl.includes("picsum.photos")) {
-      return customUrl;
-    }
-    return `https://picsum.photos/400/400?sig=${encodeURIComponent(name)}`;
-  };
-
-  // Mock diskon 10% jika kode terakhir ID produk adalah genap
-  const getMockDiscount = (productId: string) => {
-    const lastChar = productId.slice(-1);
-    const code = lastChar.charCodeAt(0);
-    return code % 2 === 0 ? 10 : 0;
-  };
-
-  // Tambahkan item ke keranjang
+  // Tambahkan item ke keranjang (harga selalu harga asli — tidak ada data diskon di database)
   const handleAddToCart = (product: KopasnowProduct) => {
     const currentKoperasiId = useCartStore.getState().koperasiId;
     const currentKoperasiName = useCartStore.getState().koperasiName;
@@ -278,9 +322,7 @@ export default function Home() {
     const clearCart = useCartStore.getState().clear;
 
     const coopName = koperasiList.find((k) => k.id === product.koperasi_id)?.nama || "Koperasi";
-    const discount = getMockDiscount(product.id_produk);
-    const originalPrice = parseFloat(product.harga_produk);
-    const finalPrice = discount > 0 ? originalPrice * (1 - discount / 100) : originalPrice;
+    const price = parseFloat(product.harga_produk);
 
     if (currentKoperasiId && currentKoperasiId !== product.koperasi_id) {
       const confirmClear = window.confirm(
@@ -291,7 +333,7 @@ export default function Home() {
         addItem(product.koperasi_id, coopName, {
           productId: product.id_produk,
           name: product.nama_produk,
-          price: finalPrice,
+          price,
           unit: product.satuan_produk || "pcs",
           photoUrl: product.foto_url,
           stock: product.stok_tersedia,
@@ -302,7 +344,7 @@ export default function Home() {
       addItem(product.koperasi_id, coopName, {
         productId: product.id_produk,
         name: product.nama_produk,
-        price: finalPrice,
+        price,
         unit: product.satuan_produk || "pcs",
         photoUrl: product.foto_url,
         stock: product.stok_tersedia,
@@ -353,7 +395,7 @@ export default function Home() {
               className="flex items-center gap-1 text-secondary hover:text-primary transition-colors hover:bg-surface-container-low px-3 py-2 rounded-full hidden md:flex cursor-pointer"
             >
               <span className="material-symbols-outlined">location_on</span>
-              <span className="font-label-lg text-label-lg">{locationName ? locationName.slice(0, 18) : "Pilih Lokasi"}</span>
+              <span className="font-label-lg text-label-lg">{(locationName || citySearchLabel || "Pilih Lokasi").slice(0, 18)}</span>
               <span className="material-symbols-outlined text-[16px]">expand_more</span>
             </button>
             <div className="flex gap-2">
@@ -408,7 +450,7 @@ export default function Home() {
             <div className="relative z-10 p-stack-lg md:p-12 max-w-2xl text-on-primary-container">
               <span className="bg-surface-container-lowest text-primary font-label-sm px-3 py-1 rounded-full uppercase tracking-wider mb-3 inline-block text-xs font-bold">Spesial Agustus</span>
               <h1 className="font-headline-lg text-headline-lg-mobile md:text-headline-lg font-bold mb-3">Promo Merdeka!</h1>
-              <p className="font-body-lg text-body-lg mb-5 opacity-95 text-sm md:text-base">Dapatkan diskon hingga 45% untuk kebutuhan pokok dari Koperasi terdekat. Dukung ekonomi desa, nikmati harga hemat.</p>
+              <p className="font-body-lg text-body-lg mb-5 opacity-95 text-sm md:text-base">Belanja kebutuhan pokok langsung dari Koperasi Desa terdekat. Dukung ekonomi desa, harga jujur dan bersahabat.</p>
               <button
                 onClick={() => {
                   const target = document.getElementById("rekomendasi-produk");
@@ -450,50 +492,110 @@ export default function Home() {
             </div>
           )}
 
+          {/* Cari kota — tersedia kapan saja, termasuk saat GPS sudah aktif */}
+          <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-4 mb-6 shadow-sm">
+            {!userLocation && locationConsent === "denied" && locationError && (
+              <p className="text-secondary text-sm mb-3 flex items-start gap-1.5">
+                <span className="material-symbols-outlined text-[18px] text-on-surface-variant">info</span>
+                {locationError}
+              </p>
+            )}
+            <form onSubmit={handleCitySearch} className="flex flex-col sm:flex-row gap-2">
+              <div className="relative flex-1">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">location_city</span>
+                <input
+                  type="text"
+                  value={cityQuery}
+                  onChange={(e) => setCityQuery(e.target.value)}
+                  placeholder={
+                    userLocation
+                      ? "Lihat koperasi di kota lain, contoh: Bandung"
+                      : "Cari koperasi terdekat dari kota Anda, contoh: Cikarang"
+                  }
+                  className="w-full bg-surface border border-outline-variant rounded-full py-2.5 pl-10 pr-4 focus:outline-none focus:border-primary text-on-surface text-sm"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={isGeocodingCity || !cityQuery.trim()}
+                className="px-6 py-2.5 bg-primary hover:bg-primary-container text-on-primary rounded-full font-label-lg text-sm font-bold transition-colors disabled:opacity-60 cursor-pointer"
+              >
+                {isGeocodingCity ? "Mencari..." : "Cari"}
+              </button>
+            </form>
+            {cityError && (
+              <p className="text-error text-sm mt-2">{cityError}</p>
+            )}
+            {citySearchLabel && !cityError && (
+              <div className="flex items-center justify-between gap-2 mt-2">
+                <p className="text-tertiary text-sm font-semibold">
+                  Menampilkan koperasi terdekat dari <strong>{citySearchLabel}</strong>.
+                </p>
+                <button
+                  onClick={handleClearCitySearch}
+                  className="text-secondary text-xs font-bold hover:underline cursor-pointer shrink-0"
+                >
+                  {userLocation ? "Kembali ke lokasi saya" : "Hapus"}
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* Koperasi Terdekat (Split Layout Peta & Daftar) */}
           <section className="mb-section-gap">
-            <div className="flex items-center justify-between mb-stack-md">
+            <div className="flex items-center justify-between gap-3 mb-stack-md flex-wrap">
               <h2 className="font-headline-md text-headline-md text-on-surface">
-                {activeCategory ? `Koperasi Kategori "${activeCategory.toUpperCase()}"` : "Koperasi Terdekat"}
+                {activeCategory
+                  ? `Koperasi Kategori "${activeCategory.toUpperCase()}"`
+                  : isViewingOtherCity
+                  ? `Koperasi Terdekat dari ${citySearchLabel}`
+                  : userLocation
+                  ? "Koperasi Terdekat dari Lokasi Anda"
+                  : "Semua Koperasi"}
               </h2>
-              <button
-                onClick={() => setShowMap((v) => !v)}
-                className="text-primary font-label-lg hover:underline text-sm font-semibold cursor-pointer flex items-center gap-1"
-              >
-                <span className="material-symbols-outlined text-[18px]">{showMap ? "map_off" : "map"}</span>
-                {showMap ? "Tutup Peta" : "Lihat Peta"}
-              </button>
+              {hasLocation && (
+                <span className="text-secondary text-xs font-bold bg-surface-container px-3 py-1 rounded-full">
+                  {ignoreRadius
+                    ? "Semua koperasi"
+                    : `Dalam radius ${NEARBY_RADIUS_KM} km`}
+                </span>
+              )}
             </div>
 
+            {/* Tidak ada koperasi dalam radius — beri jalan keluar */}
+            {noKoperasiInRadius && (
+              <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-4 mb-stack-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <p className="text-secondary text-sm">
+                  Tidak ada koperasi dalam radius {NEARBY_RADIUS_KM} km dari{" "}
+                  <strong>{citySearchLabel || locationName || "lokasi Anda"}</strong>.
+                </p>
+                <button
+                  onClick={() => setIgnoreRadius(true)}
+                  className="px-5 py-2.5 bg-primary hover:bg-primary-container text-on-primary rounded-full text-sm font-bold transition-colors cursor-pointer shrink-0"
+                >
+                  Tampilkan Semua Koperasi
+                </button>
+              </div>
+            )}
+
             <div className="bg-surface-container-lowest border border-surface-variant rounded-xl overflow-hidden flex flex-col lg:flex-row shadow-sm min-h-[350px]">
-              {/* Map Side (Kiri di Desktop, Atas di Mobile) */}
+              {/* Map Side (Kiri di Desktop, Atas di Mobile) — peta selalu aktif */}
               <div className="w-full lg:w-1/2 h-64 lg:h-auto min-h-[300px] relative bg-surface-container-low">
-                {!showMap ? (
-                  <div className="w-full h-full relative group">
-                    <img
-                      alt="Map"
-                      className="w-full h-full object-cover"
-                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuBj3tG8dhtlZPL8FInivdLxDfOmhrzttmnPHn4Dw_6Ibs13nidhX3XDBsJwaM-Cn8z-0Kx8mT44J0RPLAFZvL7VUB6PiObV4RPNSHlSbazuBJI9chg-M9PnanggtcKdnSSjXrePmbHrZ6_34JiP21gIfPvJi-opaLRO9PMS9dW9atQ7q6_4X77FVnO5TGVGbMOagmD4JtEHceOtXV1k0LqyU7OJ54QgvO0CDazEs--MeQKXrboXuLCGBw"
-                    />
-                    <div className="absolute inset-0 bg-black/25 flex items-center justify-center transition-colors group-hover:bg-black/35">
-                      <button
-                        onClick={() => setShowMap(true)}
-                        className="bg-primary hover:bg-primary-container text-on-primary font-label-lg text-label-lg px-6 py-3 rounded-full shadow-lg flex items-center gap-2 transition-all transform hover:scale-105 font-bold cursor-pointer"
-                      >
-                        <span className="material-symbols-outlined">map</span>
-                        Buka Peta Interaktif
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="w-full h-full min-h-[300px]">
-                    <KoperasiMap
-                      koperasiList={koperasiList}
-                      userPosition={userLocation}
-                      onUserLocationChange={handleUserLocationChange}
-                    />
-                  </div>
-                )}
+                <div className="w-full h-full min-h-[300px]">
+                  <KoperasiMap
+                    koperasiList={radiusList}
+                    userPosition={effectiveLocation}
+                    positionLabel={
+                      isViewingOtherCity
+                        ? `📍 Pusat pencarian: ${citySearchLabel}`
+                        : "📍 Anda di sini"
+                    }
+                    radiusKm={hasLocation && !ignoreRadius ? NEARBY_RADIUS_KM : undefined}
+                    selectedId={selectedKoperasiId}
+                    onSelectKoperasi={handleSelectKoperasi}
+                    onUserLocationChange={handleUserLocationChange}
+                  />
+                </div>
               </div>
 
               {/* List Side (Kanan di Desktop, Bawah di Mobile) */}
@@ -527,41 +629,54 @@ export default function Home() {
                     )}
                   </div>
                 ) : (
-                  filteredList.slice(0, 5).map((koperasi, idx) => {
-                    const storeImages = [
-                      "https://lh3.googleusercontent.com/aida-public/AB6AXuCubzdPlybsGWQYiCtg0yLwPpxOFoxeRrtvu5si2q2tGqIradzyhl_S91QudFIrePb8fFjfbyT8txZHWimcXM_Ui4QpEe4Hjexm1R5S9UPUu1wQ1FSds5F9REM85CStbYwe0XPgSO59lx8nd_DYQT3EeCbQMSxXxX3Aa22vlG5xyl1wG97E5RSgPPKoSU8bcfzS8ExcVUXyWI-a2ZEOulJ7vilbkg2fWf8ROnrhRh85fdp8vZogIXYJjA",
-                      "https://lh3.googleusercontent.com/aida-public/AB6AXuBb21L72yflcsTZCvWNfWT5J29qx415Dq9B3amvTz26-AI-O0VcEjnIYvschn1bzaIR55qKoARNhzThBm8DwPtXEEn7tXeGM-0k8KR--nW4Bzi1Fb-OtRqizyFZOPp0IUXKSxM-WsmDltDcqqfA78_FMaAwGzdZXaLOvRQcu0jtToGilHYo4dCK0R5inqqeJhjcDU4lxidZbtUFaiLEN10kwnuDXUXfMqyzcoZQVvHvhMu4rqbVSPmnig"
-                    ];
-                    const shopImg = storeImages[idx % storeImages.length];
-
+                  filteredList.slice(0, 5).map((koperasi) => {
+                    const isSelected = koperasi.id === selectedKoperasiId;
                     return (
                       <div
                         key={koperasi.id}
-                        className="p-3 rounded-lg border border-surface-variant hover:border-primary/30 hover:bg-surface-container-low transition-all"
+                        className={`p-3 rounded-lg border transition-all ${
+                          isSelected
+                            ? "border-primary bg-primary/5 ring-1 ring-primary/30"
+                            : "border-surface-variant hover:border-primary/30 hover:bg-surface-container-low"
+                        }`}
                       >
-                        <Link href={`/koperasi/${koperasi.id}`} className="flex gap-4 cursor-pointer">
-                          <div className="w-16 h-16 rounded-lg bg-surface-variant shrink-0 overflow-hidden">
-                            <div className="w-full h-full bg-cover bg-center" style={{ backgroundImage: `url('${shopImg}')` }}></div>
+                        {/* Klik kartu menyorot titiknya di peta, bukan pindah halaman */}
+                        <button
+                          type="button"
+                          onClick={() => handleSelectKoperasi(koperasi.id)}
+                          aria-pressed={isSelected}
+                          className="flex gap-4 w-full text-left cursor-pointer"
+                        >
+                          <div className={`w-16 h-16 rounded-lg shrink-0 flex items-center justify-center border ${
+                            isSelected ? "bg-primary text-on-primary border-primary" : "bg-primary-fixed border-primary/20"
+                          }`}>
+                            <span className={`text-lg font-bold ${isSelected ? "text-on-primary" : "text-primary"}`}>
+                              {koperasi.nama.charAt(0).toUpperCase()}
+                            </span>
                           </div>
-                          <div className="flex-1">
-                            <div className="flex justify-between items-start">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex justify-between items-start gap-2">
                               <h3 className="font-headline-sm text-headline-sm text-on-surface line-clamp-1">{koperasi.nama}</h3>
                               {koperasi.status === "active" ? (
-                                <span className="bg-tertiary-container/20 text-tertiary font-label-sm px-2 py-0.5 rounded-full text-[10px] font-bold">Buka</span>
+                                <span className="bg-tertiary-container/20 text-tertiary font-label-sm px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0">Buka</span>
                               ) : (
-                                <span className="bg-outline-variant text-secondary font-label-sm px-2 py-0.5 rounded-full text-[10px] font-bold">Tutup</span>
+                                <span className="bg-outline-variant text-secondary font-label-sm px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0">Tutup</span>
                               )}
                             </div>
                             <p className="text-secondary text-xs mt-1 line-clamp-1">{koperasi.alamat || "Jl. Desa Utama"}</p>
                             <div className="flex items-center gap-1 mt-2 text-on-surface-variant text-[11px] font-bold">
                               <span className="material-symbols-outlined text-[14px]">location_on</span>
-                              <span>{koperasi.distance > 0 ? `${(koperasi.distance / 1000).toFixed(1)} km` : "Terdekat"}</span>
-                              <span className="mx-1">•</span>
-                              <span className="material-symbols-outlined text-[14px] text-tertiary">local_shipping</span>
-                              <span className="text-tertiary">Gratis Ongkir</span>
+                              <span>{hasLocation && koperasi.distance > 0 ? formatDistance(koperasi.distance) : "Jarak tidak diketahui"}</span>
+                              {isSelected && (
+                                <>
+                                  <span className="mx-1">•</span>
+                                  <span className="text-primary">Ditandai di peta</span>
+                                </>
+                              )}
                             </div>
                           </div>
-                        </Link>
+                        </button>
+
                         {/* Dynamic Products Search Hint inside card */}
                         {(() => {
                           const products = productsByKoperasi[koperasi.id] || [];
@@ -581,6 +696,15 @@ export default function Home() {
                             </div>
                           );
                         })()}
+
+                        {/* Pindah halaman hanya lewat tombol yang jelas */}
+                        <Link
+                          href={`/koperasi/${koperasi.id}`}
+                          className="mt-3 w-full min-h-[44px] bg-primary hover:bg-primary-container text-on-primary rounded-full text-sm font-bold flex items-center justify-center gap-1.5 transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">storefront</span>
+                          Belanja di Sini
+                        </Link>
                       </div>
                     );
                   })
@@ -639,10 +763,7 @@ export default function Home() {
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-gutter-grid md:gap-stack-md">
                 {recommendedProducts.map((prod) => {
-                  const discount = getMockDiscount(prod.id_produk);
                   const priceNum = parseFloat(prod.harga_produk);
-                  const discountedPrice = priceNum * (1 - discount / 100);
-                  const prodImg = getProductImage(prod.nama_produk, prod.foto_url);
                   const coopName = koperasiList.find((k) => k.id === prod.koperasi_id)?.nama || "Koperasi Desa";
 
                   return (
@@ -650,16 +771,15 @@ export default function Home() {
                       key={prod.id_produk}
                       className="bg-surface-container-lowest border border-surface-variant rounded-xl overflow-hidden hover:shadow-md transition-all group flex flex-col"
                     >
-                      <div className="aspect-square w-full relative bg-surface-container-low overflow-hidden">
-                        <img
-                          alt={prod.nama_produk}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          src={prodImg}
-                        />
-                        {discount > 0 && (
-                          <span className="absolute top-2 left-2 bg-error text-on-error font-label-sm px-2 py-1 rounded-full text-[10px] uppercase font-bold">
-                            -{discount}%
-                          </span>
+                      <div className="aspect-square w-full relative bg-surface-container-low overflow-hidden flex items-center justify-center">
+                        {prod.foto_url ? (
+                          <img
+                            alt={prod.nama_produk}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            src={prod.foto_url}
+                          />
+                        ) : (
+                          <span className="material-symbols-outlined text-5xl text-on-surface-variant">shopping_basket</span>
                         )}
                       </div>
                       <div className="p-3 flex flex-col flex-1">
@@ -668,16 +788,9 @@ export default function Home() {
                         </h3>
                         <p className="text-secondary text-xs mb-3 font-medium">{coopName}</p>
                         <div className="mt-auto flex items-center justify-between">
-                          <div>
-                            {discount > 0 ? (
-                              <>
-                                <p className="text-secondary line-through text-[11px]">Rp {priceNum.toLocaleString("id-ID")}</p>
-                                <p className="font-headline-sm text-headline-sm text-tertiary text-sm">Rp {discountedPrice.toLocaleString("id-ID")}</p>
-                              </>
-                            ) : (
-                              <p className="font-headline-sm text-headline-sm text-on-surface text-sm">Rp {priceNum.toLocaleString("id-ID")}</p>
-                            )}
-                          </div>
+                          <p className="font-headline-sm text-headline-sm text-on-surface text-sm">
+                            Rp {priceNum.toLocaleString("id-ID")}
+                          </p>
                           <button
                             onClick={() => handleAddToCart(prod)}
                             className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center hover:bg-primary hover:text-on-primary transition-colors cursor-pointer"

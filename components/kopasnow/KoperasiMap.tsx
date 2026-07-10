@@ -9,23 +9,20 @@ import { haversineDistance, formatWalkTime } from "@/utils/helper/geo";
 
 // ── Custom marker icons ──────────────────────────────────────
 
-const koperasiIcon = new L.Icon({
-  iconUrl: "https://cdn.jsdelivr.net/gh/pointhi/leaflet-color-markers@master/img/marker-icon-red.png",
-  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
+function buildIcon(color: "red" | "gold" | "blue") {
+  return new L.Icon({
+    iconUrl: `https://cdn.jsdelivr.net/gh/pointhi/leaflet-color-markers@master/img/marker-icon-${color}.png`,
+    shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41],
+  });
+}
 
-const userIcon = new L.Icon({
-  iconUrl: "https://cdn.jsdelivr.net/gh/pointhi/leaflet-color-markers@master/img/marker-icon-blue.png",
-  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
+const koperasiIcon = buildIcon("red");
+const koperasiSelectedIcon = buildIcon("gold");
+const userIcon = buildIcon("blue");
 
 // ── Locate Me control ────────────────────────────────────────
 
@@ -58,28 +55,56 @@ function LocateControl({
   );
 }
 
-// ── Fit bounds helper ────────────────────────────────────────
+// ── Pan & zoom ke titik acuan / semua koperasi ───────────────
 
 function FitBounds({
   koperasiList,
-  userPosition,
+  focusPosition,
 }: {
   koperasiList: KoperasiLocation[];
-  userPosition: [number, number] | null;
+  focusPosition: [number, number] | null;
+}) {
+  const map = useMap();
+
+  // Digeser & di-zoom ulang setiap titik acuan berubah (mis. pengguna
+  // mengetik kota lain) atau daftar koperasi yang tampil berubah.
+  useEffect(() => {
+    const points: [number, number][] = koperasiList.map((k) => [k.lat, k.lng]);
+    if (focusPosition) {
+      points.push(focusPosition);
+    }
+
+    if (points.length === 0) return;
+
+    if (points.length === 1) {
+      map.flyTo(points[0], 14, { duration: 0.8 });
+      return;
+    }
+
+    const bounds = L.latLngBounds(points.map((p) => L.latLng(p[0], p[1])));
+    map.flyToBounds(bounds, { padding: [50, 50], maxZoom: 14, duration: 0.8 });
+  }, [map, koperasiList, focusPosition]);
+
+  return null;
+}
+
+// ── Terbang ke koperasi yang dipilih dari kartu ──────────────
+
+function FlyToSelected({
+  koperasiList,
+  selectedId,
+}: {
+  koperasiList: KoperasiLocation[];
+  selectedId: string | null;
 }) {
   const map = useMap();
 
   useEffect(() => {
-    const points: [number, number][] = koperasiList.map((k) => [k.lat, k.lng]);
-    if (userPosition) {
-      points.push(userPosition);
-    }
-
-    if (points.length > 0) {
-      const bounds = L.latLngBounds(points.map((p) => L.latLng(p[0], p[1])));
-      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
-    }
-  }, [map, koperasiList, userPosition]);
+    if (!selectedId) return;
+    const target = koperasiList.find((k) => k.id === selectedId);
+    if (!target) return;
+    map.flyTo([target.lat, target.lng], Math.max(map.getZoom(), 15), { duration: 0.6 });
+  }, [map, koperasiList, selectedId]);
 
   return null;
 }
@@ -89,6 +114,12 @@ function FitBounds({
 interface KoperasiMapProps {
   koperasiList: KoperasiLocation[];
   userPosition: [number, number] | null;
+  /** Label untuk marker posisi: "📍 Anda di sini" (GPS) atau "📍 Pusat pencarian: <kota>" (kota diketik manual) */
+  positionLabel?: string;
+  /** Radius pencarian dalam km — digambar sebagai lingkaran di sekitar titik acuan */
+  radiusKm?: number;
+  selectedId?: string | null;
+  onSelectKoperasi?: (id: string) => void;
   onUserLocationChange?: (lat: number, lng: number) => void;
 }
 
@@ -98,6 +129,10 @@ interface KoperasiMapProps {
 export default function KoperasiMap({
   koperasiList,
   userPosition,
+  positionLabel = "📍 Anda di sini",
+  radiusKm,
+  selectedId = null,
+  onSelectKoperasi,
   onUserLocationChange,
 }: KoperasiMapProps) {
   const handleLocate = useCallback(
@@ -109,9 +144,10 @@ export default function KoperasiMap({
 
   // Default center: first koperasi or Cikarang area
   const defaultCenter: [number, number] =
-    koperasiList.length > 0
+    userPosition ??
+    (koperasiList.length > 0
       ? [koperasiList[0].lat, koperasiList[0].lng]
-      : [-6.3, 107.15]; // Cikarang fallback
+      : [-6.3, 107.15]); // Cikarang fallback
 
   return (
     <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-lg border border-slate-200">
@@ -127,25 +163,38 @@ export default function KoperasiMap({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        <FitBounds koperasiList={koperasiList} userPosition={userPosition} />
+        <FitBounds koperasiList={koperasiList} focusPosition={userPosition} />
+        <FlyToSelected koperasiList={koperasiList} selectedId={selectedId} />
 
-        {/* User location marker */}
+        {/* Titik acuan + lingkaran radius pencarian */}
         {userPosition && (
           <>
+            {radiusKm && (
+              <Circle
+                center={userPosition}
+                radius={radiusKm * 1000}
+                pathOptions={{
+                  color: "#3b82f6",
+                  fillColor: "#3b82f6",
+                  fillOpacity: 0.06,
+                  weight: 1.5,
+                }}
+              />
+            )}
             <Circle
               center={userPosition}
               radius={200}
               pathOptions={{
                 color: "#3b82f6",
                 fillColor: "#3b82f6",
-                fillOpacity: 0.1,
+                fillOpacity: 0.2,
                 weight: 2,
               }}
             />
             <Marker position={userPosition} icon={userIcon}>
               <Popup>
                 <p className="font-bold text-base text-slate-800 text-center">
-                  📍 Anda di sini
+                  {positionLabel}
                 </p>
               </Popup>
             </Marker>
@@ -154,6 +203,7 @@ export default function KoperasiMap({
 
         {/* Koperasi markers */}
         {koperasiList.map((koperasi) => {
+          const isSelected = koperasi.id === selectedId;
           const distance = userPosition
             ? haversineDistance(userPosition[0], userPosition[1], koperasi.lat, koperasi.lng)
             : null;
@@ -162,7 +212,11 @@ export default function KoperasiMap({
             <Marker
               key={koperasi.id}
               position={[koperasi.lat, koperasi.lng]}
-              icon={koperasiIcon}
+              icon={isSelected ? koperasiSelectedIcon : koperasiIcon}
+              zIndexOffset={isSelected ? 1000 : 0}
+              eventHandlers={{
+                click: () => onSelectKoperasi?.(koperasi.id),
+              }}
             >
               <Popup>
                 <div className="min-w-[220px] space-y-1.5">
@@ -181,7 +235,7 @@ export default function KoperasiMap({
                     href={`/koperasi/${koperasi.id}`}
                     className="!text-white block w-full text-center bg-[#CE1126] font-bold text-sm rounded-lg px-3 py-2.5 mt-1"
                   >
-                    Lihat Barang di Sini
+                    Belanja di Sini
                   </a>
                 </div>
               </Popup>
