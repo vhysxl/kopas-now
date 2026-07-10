@@ -4,7 +4,7 @@ SET session_replication_role = replica;
 -- PostgreSQL database dump
 --
 
--- \restrict bPtNcBps3Eb2cD01xnz45AYmI6dvyg1atKVLPLimuDfBB1kEUl8bG1rOiLxBEmh
+-- \restrict G4IV2DljyP6FBPJ2GsS6Tdy5ZfebM6BtxGbhXN1QiRBeiDXMlUycWRMQzSGR5ui
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.6
@@ -72,6 +72,12 @@ INSERT INTO "public"."kopasnow_products" ("id_produk", "koperasi_id", "nama_prod
 
 
 --
+-- Data for Name: kopasnow_online_transactions_detail; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+
+
+--
 -- Data for Name: kopasnow_staff; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
@@ -96,6 +102,6 @@ INSERT INTO "public"."kopasnow_transactions" ("id_transaksi", "koperasi_id", "id
 -- PostgreSQL database dump complete
 --
 
--- \unrestrict bPtNcBps3Eb2cD01xnz45AYmI6dvyg1atKVLPLimuDfBB1kEUl8bG1rOiLxBEmh
+-- \unrestrict G4IV2DljyP6FBPJ2GsS6Tdy5ZfebM6BtxGbhXN1QiRBeiDXMlUycWRMQzSGR5ui
 
 RESET ALL;

@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { createAdminClient } from "@/utils/supabase/admin";
 import { cookies } from "next/headers";
 
 export type TransactionItem = {
@@ -9,19 +10,21 @@ export type TransactionItem = {
   quantity: number;
   unit_price: number;
   subtotal: number;
+  notes?: string;
 };
 
 export type CreateTransactionParams = {
   customer_id: string;
   koperasi_id: string;
   total_amount: number;
-  payment_method: "cash" | "transfer" | "ewallet" | "cod";
+  payment_method: "QRIS" | "COD" | "TRANSFER";
   delivery_address?: string;
   delivery_lat?: number;
   delivery_lng?: number;
   delivery_fee?: number;
   notes?: string;
   items: TransactionItem[];
+  tipe_pembelian: string;
 };
 
 export type TransactionResponse = {
@@ -31,7 +34,50 @@ export type TransactionResponse = {
 };
 
 /**
- * Create a new transaction record in kopasnow_online_transactions
+ * Ensure customer record exists for the given user_id
+ * Creates one if it doesn't exist yet
+ */
+async function ensureCustomerExists(userId: string): Promise<string | null> {
+  const adminClient = createAdminClient();
+
+  // Check if customer already exists
+  const { data: existingCustomer, error: checkError } = await adminClient
+    .from("kopasnow_customers")
+    .select("id")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (checkError) {
+    console.error("Error checking customer:", checkError);
+    return null;
+  }
+
+  if (existingCustomer) {
+    return existingCustomer.id;
+  }
+
+  // Create new customer record
+  const { data: newCustomer, error: createError } = await adminClient
+    .from("kopasnow_customers")
+    .insert({
+      user_id: userId,
+      nama: "User",
+      email: null,
+      phone: null,
+    })
+    .select("id")
+    .single();
+
+  if (createError) {
+    console.error("Error creating customer:", createError);
+    return null;
+  }
+
+  return newCustomer.id;
+}
+
+/**
+ * Create a new transaction in kopasnow_online_transactions_header and detail
  */
 export async function createTransaction(
   params: CreateTransactionParams
@@ -40,63 +86,91 @@ export async function createTransaction(
     const cookieStore = await cookies();
     const supabase = createClient(cookieStore);
 
-    // Create the main transaction record
-    const { data: transaction, error: transactionError } = await supabase
-      .from("kopasnow_online_transactions")
-      .insert({
-        customer_id: params.customer_id,
-        koperasi_id: params.koperasi_id,
-        total_amount: params.total_amount,
-    payment_method: params.payment_method,
-        transaction_status: "pending",
-  delivery_address: params.delivery_address,
-        delivery_lat: params.delivery_lat,
-      delivery_lng: params.delivery_lng,
-        delivery_fee: params.delivery_fee || 0,
-     notes: params.notes,
-      })
-    .select("id_transaksi")
-      .single();
-
-    if (transactionError) {
-      console.error("Failed to create transaction:", transactionError);
+    // Ensure customer record exists
+    const customerId = await ensureCustomerExists(params.customer_id);
+    if (!customerId) {
       return {
         success: false,
-        error: "Gagal mencatat transaksi. Silakan coba lagi.",
-    };
-    }
-
-    // Create transaction items
-    const itemsToInsert = params.items.map((item) => ({
- transaction_id: transaction.id_transaksi,
-      product_id: item.product_id,
-      product_name: item.product_name,
-      quantity: item.quantity,
-      unit_price: item.unit_price,
-      subtotal: item.subtotal,
-    }));
-
-    const { error: itemsError } = await supabase
-    .from("kopasnow_online_transaction_items")
-   .insert(itemsToInsert);
-
-    if (itemsError) {
-      console.error("Failed to create transaction items:", itemsError);
-      // Rollback the transaction if items fail
-      await supabase
-        .from("kopasnow_online_transactions")
-    .delete()
-        .eq("id_transaksi", transaction.id_transaksi);
-
-      return {
-        success: false,
-  error: "Gagal mencatat detail transaksi. Silakan coba lagi.",
+        error: "Gagal memvalidasi data pelanggan. Silakan coba lagi.",
       };
     }
 
+    // Prepare geography point for delivery address if provided
+    let alamatPengiriman = null;
+    if (params.delivery_lat && params.delivery_lng) {
+      alamatPengiriman = `POINT(${params.delivery_lng} ${params.delivery_lat})`;
+    }
+
+    // Create the header transaction record
+    const { data: transaction, error: transactionError } = await supabase
+      .from("kopasnow_online_transactions_header")
+      .insert({
+        id_pelanggan: customerId,
+        id_koperasi: params.koperasi_id,
+        total_pembelian: params.total_amount,
+        metode_pembayaran: params.payment_method,
+        status_transaksi: "pending",
+        alamat_pengiriman: alamatPengiriman,
+        delivery_fee: params.delivery_fee || 0,
+        notes: params.notes,
+        tipe_pembelian: params.tipe_pembelian,
+      })
+      .select("id_transaksi")
+      .single();
+
+    if (transactionError) {
+      console.error("Failed to create transaction header:", transactionError);
+      console.error("Error details:", {
+        message: transactionError.message,
+        details: transactionError.details,
+        hint: transactionError.hint,
+        code: transactionError.code,
+      });
+      console.error("Insert data:", {
+        id_pelanggan: params.customer_id,
+        id_koperasi: params.koperasi_id,
+        total_pembelian: params.total_amount,
+        metode_pembayaran: params.payment_method,
+        tipe_pembelian: params.tipe_pembelian,
+      });
+      return {
+        success: false,
+        error: `Gagal mencatat transaksi: ${transactionError.message}`,
+      };
+    }
+
+    // Create transaction detail items
+    const itemsToInsert = params.items.map((item) => ({
+      id_transaksi: transaction.id_transaksi,
+      id_produk: item.product_id,
+      nama_produk: item.product_name,
+      jumlah: item.quantity,
+      harga_satuan: item.unit_price,
+ subtotal: item.subtotal,
+      catatan_item: item.notes,
+    }));
+
+    const { error: itemsError } = await supabase
+      .from("kopasnow_online_transactions_detail")
+      .insert(itemsToInsert);
+
+  if (itemsError) {
+      console.error("Failed to create transaction details:", itemsError);
+      // Rollback the transaction header if details fail
+      await supabase
+        .from("kopasnow_online_transactions_header")
+     .delete()
+        .eq("id_transaksi", transaction.id_transaksi);
+
+  return {
+        success: false,
+        error: "Gagal mencatat detail transaksi. Silakan coba lagi.",
+  };
+  }
+
     return {
       success: true,
-    transaction_id: transaction.id_transaksi,
+      transaction_id: transaction.id_transaksi,
     };
   } catch (error) {
     console.error("Unexpected error creating transaction:", error);
@@ -112,17 +186,19 @@ export async function createTransaction(
  */
 export async function updateTransactionStatus(
   transaction_id: string,
-  status: "pending" | "processing" | "delivering" | "completed" | "cancelled"
+  status: "pending" | "paid" | "processing" | "shipped" | "completed" | "cancelled"
 ): Promise<TransactionResponse> {
   try {
     const cookieStore = await cookies();
     const supabase = createClient(cookieStore);
 
     const updateData: {
-      transaction_status: string;
+      status_transaksi: string;
       completed_at?: string;
+      updated_at: string;
     } = {
-      transaction_status: status,
+status_transaksi: status,
+      updated_at: new Date().toISOString(),
     };
 
     // Set completed_at if status is completed
@@ -131,16 +207,16 @@ export async function updateTransactionStatus(
     }
 
     const { error } = await supabase
-      .from("kopasnow_online_transactions")
+      .from("kopasnow_online_transactions_header")
       .update(updateData)
       .eq("id_transaksi", transaction_id);
 
     if (error) {
       console.error("Failed to update transaction status:", error);
-    return {
+      return {
         success: false,
- error: "Gagal memperbarui status transaksi.",
-    };
+  error: "Gagal memperbarui status transaksi.",
+};
     }
 
     return {
@@ -150,41 +226,113 @@ export async function updateTransactionStatus(
   } catch (error) {
     console.error("Unexpected error updating transaction:", error);
     return {
-      success: false,
+  success: false,
       error: "Terjadi kesalahan sistem. Silakan coba lagi.",
     };
   }
 }
 
 /**
- * Get user's transaction history
+ * Get user's transaction history with details
  */
 export async function getUserTransactions(customer_id: string) {
   try {
-    const cookieStore = await cookies();
-const supabase = createClient(cookieStore);
+    const adminClient = createAdminClient();
 
-    const { data, error } = await supabase
-      .from("kopasnow_online_transactions")
+    console.log("getUserTransactions - fetching for customer_id:", customer_id);
+
+    const { data, error } = await adminClient
+      .from("kopasnow_online_transactions_header")
       .select(
         `
-   *,
-        kopasnow_online_transaction_items (
-          *
+        *,
+        kopasnow_online_transactions_detail (
+          id_detail,
+          id_produk,
+          nama_produk,
+          harga_satuan,
+          jumlah,
+          subtotal,
+          catatan_item,
+          created_at
+        ),
+        kopasnow_koperasi (
+          id,
+          nama,
+          kode_koperasi,
+          alamat
         )
       `
-    )
-      .eq("customer_id", customer_id)
+      )
+      .eq("id_pelanggan", customer_id)
       .order("created_at", { ascending: false });
 
     if (error) {
- console.error("Failed to fetch user transactions:", error);
+      console.error("Failed to fetch user transactions:", error);
       return { success: false, data: null, error: "Gagal mengambil riwayat transaksi." };
     }
 
-  return { success: true, data, error: null };
+    console.log("getUserTransactions - found", data?.length ?? 0, "transactions");
+    return { success: true, data, error: null };
   } catch (error) {
     console.error("Unexpected error fetching transactions:", error);
+    return {
+      success: false,
+      data: null,
+      error: "Terjadi kesalahan sistem. Silakan coba lagi.",
+    };
+  }
+}
+
+/**
+ * Get transaction detail by ID
+ */
+export async function getTransactionDetail(transaction_id: string) {
+  try {
+    const cookieStore = await cookies();
+    const supabase = createClient(cookieStore);
+
+    const { data, error } = await supabase
+      .from("kopasnow_online_transactions_header")
+   .select(
+    `
+        *,
+        kopasnow_online_transactions_detail (
+          id_detail,
+     id_produk,
+ nama_produk,
+ harga_satuan,
+          jumlah,
+          subtotal,
+  catatan_item,
+     created_at
+     ),
+        kopasnow_koperasi (
+          id,
+     nama,
+          kode_koperasi,
+          alamat,
+       admin_phone
+      ),
+        kopasnow_customers (
+        id,
+          nama,
+      email,
+          phone
+        )
+      `
+      )
+      .eq("id_transaksi", transaction_id)
+   .single();
+
+  if (error) {
+  console.error("Failed to fetch transaction detail:", error);
+      return { success: false, data: null, error: "Gagal mengambil detail transaksi." };
+    }
+
+    return { success: true, data, error: null };
+  } catch (error) {
+    console.error("Unexpected error fetching transaction detail:", error);
     return {
       success: false,
       data: null,
