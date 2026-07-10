@@ -18,10 +18,10 @@ export default function AkunPage() {
   const phone = displayPhone(user, customer) || "-";
   const joinedDate = customer?.created_at
     ? new Date(customer.created_at).toLocaleDateString("id-ID", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      })
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    })
     : "-";
 
   if (isLoading) {
@@ -89,7 +89,7 @@ export default function AkunPage() {
                 <span className="text-base font-bold text-slate-900 break-all">{email}</span>
               </div>
               <div>
-                <span className="text-sm font-semibold text-slate-500 block">Menjadi anggota sejak</span>
+                <span className="text-sm font-semibold text-slate-500 block">Bergabung sejak</span>
                 <span className="text-base font-bold text-slate-900">{joinedDate}</span>
               </div>
             </div>

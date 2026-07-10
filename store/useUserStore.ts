@@ -8,7 +8,6 @@ export interface Customer {
   email: string | null;
   phone: string | null;
   created_at?: string;
-  updated_at?: string;
 }
 
 interface UserState {

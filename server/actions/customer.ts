@@ -11,7 +11,6 @@ export interface CustomerRecord {
   email: string | null;
   phone: string | null;
   created_at?: string;
-  updated_at?: string;
 }
 
 /**
@@ -36,7 +35,7 @@ export async function getCurrentCustomer(): Promise<CustomerRecord | null> {
   const adminClient = createAdminClient();
   const { data, error } = await adminClient
     .from("kopasnow_customers")
-    .select("id, user_id, nama, email, phone, created_at, updated_at")
+    .select("id, user_id, nama, email, phone, created_at")
     .eq("user_id", user.id)
     .maybeSingle();
 
