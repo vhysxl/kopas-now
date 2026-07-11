@@ -4,7 +4,6 @@ import SearchResults from "@/components/kopasnow/SearchResults";
 import BottomNav from "@/components/kopasnow/BottomNav";
 import LocationIndicator from "@/components/kopasnow/LocationIndicator";
 import NotificationBell from "@/components/kopasnow/NotificationBell";
-import { Search } from "lucide-react";
 
 type Tab = "semua" | "koperasi" | "produk";
 
@@ -22,23 +21,16 @@ export default async function SearchPage({ searchParams }: PageProps) {
   const tab = normalizeTab(params.tab);
 
   return (
-    <div className="min-h-screen bg-[#F6F6F6] font-sans text-slate-900 flex flex-col pb-24 md:pb-8">
-      {/* Garis bendera Merah Putih */}
-      <div className="w-full h-1.5 flex fixed top-0 left-0 z-50">
-        <div className="w-1/2 bg-[#CE1126]" />
-        <div className="w-1/2 bg-white border-b border-slate-200" />
-      </div>
+    <div className="min-h-screen bg-background font-body-md text-on-background flex flex-col pb-24 md:pb-8">
 
-      <header className="bg-white border-b border-slate-200 shadow-sm sticky top-1.5 z-40">
-        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-2">
+      <header className="bg-surface border-b border-outline-variant shadow-sm sticky top-0 z-40 transition-all duration-200">
+        <div className="max-w-screen-xl mx-auto px-5 py-3 flex items-center gap-2">
           <Link
             href="/"
             aria-label="Kembali ke beranda"
-            className="shrink-0 inline-flex items-center justify-center min-h-[48px] min-w-[48px] -ml-2 text-slate-700 hover:text-[#CE1126] transition-colors"
+            className="shrink-0 inline-flex items-center justify-center min-h-[44px] min-w-[44px] -ml-2 text-secondary hover:bg-surface-variant rounded-full transition-colors"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-6 h-6">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-            </svg>
+            <span className="material-symbols-outlined" aria-hidden>arrow_back</span>
           </Link>
           <SearchBar className="flex-1" initialQuery={query} />
           <LocationIndicator />
@@ -46,19 +38,19 @@ export default async function SearchPage({ searchParams }: PageProps) {
         </div>
       </header>
 
-      <main className="flex-1 max-w-3xl w-full mx-auto px-4 py-6">
+      <main className="flex-1 max-w-screen-xl w-full mx-auto px-5 py-6">
         {query ? (
           <>
-            <h1 className="text-xl font-bold text-slate-900 mb-4">
+            <h1 className="font-headline-md text-headline-md font-bold text-on-surface mb-4">
               Hasil pencarian &quot;{query}&quot;
             </h1>
             <SearchResults query={query} initialTab={tab} />
           </>
         ) : (
-          <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center flex flex-col items-center">
-            <Search className="w-16 h-16 text-slate-300 mb-4" />
-            <p className="text-lg font-bold text-slate-900">Mau cari apa?</p>
-            <p className="text-base text-slate-600 mt-1">
+          <div className="bg-surface-container-lowest rounded-xl border border-outline-variant p-8 text-center flex flex-col items-center">
+            <span className="material-symbols-outlined text-4xl text-secondary mb-4" aria-hidden>search</span>
+            <p className="font-headline-sm text-headline-sm font-bold text-on-surface">Mau cari apa?</p>
+            <p className="text-body-md font-body-md text-secondary mt-1">
               Tulis nama barang atau nama koperasi di kotak pencarian di atas.
             </p>
           </div>

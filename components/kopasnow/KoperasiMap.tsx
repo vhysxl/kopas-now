@@ -7,7 +7,6 @@ import "leaflet/dist/leaflet.css";
 import type { KoperasiLocation } from "@/utils/helper/geo";
 import Link from "next/link";
 import { formatDistance, haversineDistance, formatWalkTime } from "@/utils/helper/geo";
-import { MapPin } from "lucide-react";
 
 // ── Custom marker icons ──────────────────────────────────────
 
@@ -57,13 +56,10 @@ function LocateControl({
   return (
     <button
       onClick={handleLocate}
-      className="absolute bottom-4 right-4 z-[1000] min-h-[48px] bg-white hover:bg-slate-50 text-slate-800 px-4 py-3 rounded-xl shadow-lg border-2 border-slate-300 flex items-center gap-2 text-base font-bold transition-all cursor-pointer"
+      className="absolute bottom-4 right-4 z-[1000] min-h-[48px] bg-surface-container-lowest hover:bg-surface-container-low text-on-surface px-4 py-3 rounded-xl shadow-sm border border-outline-variant flex items-center gap-2 text-label-md font-label-md font-bold transition-all cursor-pointer"
       title="Tunjukkan posisi saya di peta"
     >
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 text-[#CE1126]">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
-      </svg>
+      <span className="material-symbols-outlined text-primary" aria-hidden>my_location</span>
       Posisi Saya
     </button>
   );
@@ -216,20 +212,21 @@ export default function KoperasiMap({
 
   return (
     <div
-      className={`relative w-full h-full rounded-2xl overflow-hidden shadow-lg border-2 ${
-        pickMode ? "border-[#CE1126]" : "border-slate-200"
+      className={`relative w-full h-full rounded-2xl overflow-hidden shadow-sm border ${
+        pickMode ? "border-primary" : "border-outline-variant"
       }`}
     >
       {/* Petunjuk saat mode tandai titik menyala */}
       {pickMode && (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] bg-[#CE1126] text-white px-4 py-2.5 rounded-full shadow-lg max-w-[90%]">
-          <p className="text-base font-bold text-center">
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] bg-primary text-on-primary px-5 py-3 rounded-full shadow-md max-w-[90%]">
+          <p className="text-label-md font-label-md font-bold text-center">
             Tekan peta di tempat Anda berada
           </p>
         </div>
       )}
 
       <MapContainer
+        key="kopas-map"
         center={defaultCenter}
         zoom={13}
         scrollWheelZoom={true}
@@ -301,23 +298,23 @@ export default function KoperasiMap({
               }}
             >
               <Popup>
-                <div className="min-w-[220px] space-y-1.5">
-                  <p className="font-bold text-base text-slate-800 leading-tight">
+                <div className="min-w-[220px] space-y-2">
+                  <p className="font-title-md font-bold text-on-surface leading-tight">
                     {koperasi.nama}
                   </p>
                   {koperasi.alamat && (
-                    <p className="text-sm text-slate-600 flex items-start gap-1 mt-1">
-                      <MapPin className="w-4 h-4 shrink-0 mt-0.5" /> {koperasi.alamat}
+                    <p className="text-body-sm text-secondary flex items-start gap-1.5 mt-1">
+                      <span className="material-symbols-outlined text-[16px] shrink-0 mt-0.5" aria-hidden>location_on</span> {koperasi.alamat}
                     </p>
                   )}
                   {distance !== null && (
-                    <p className="text-sm font-semibold text-slate-700">
-                      🚶 {formatWalkTime(distance)}
+                    <p className="text-label-sm font-semibold text-secondary">
+                      <span className="material-symbols-outlined text-[16px] shrink-0 align-text-bottom" aria-hidden>directions_walk</span> {formatWalkTime(distance)}
                     </p>
                   )}
                   <a
                     href={`/koperasi/${koperasi.id}`}
-                    className="!text-white block w-full text-center bg-[#CE1126] font-bold text-sm rounded-lg px-3 py-2.5 mt-1"
+                    className="!text-on-primary block w-full text-center bg-primary hover:bg-surface-tint font-label-md font-bold rounded-full px-4 py-2.5 mt-2 transition-colors"
                   >
                     Belanja di Sini
                   </a>

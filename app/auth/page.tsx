@@ -387,29 +387,63 @@ export default function AuthPage() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-on-surface text-primary-fixed font-label-sm text-label-sm w-full mt-auto">
-        <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-8 px-margin-page py-section-gap text-surface-bright max-w-screen-xl mx-auto">
-          {/* Brand Info */}
-          <div className="flex flex-col gap-4 text-center md:text-left">
-            <span className="font-headline-sm text-headline-sm text-surface-bright flex items-center justify-center md:justify-start gap-2">
-              <span className="material-symbols-outlined" data-weight="fill">storefront</span>
-              KopasNow
-            </span>
-            <p className="text-surface-variant text-xs leading-relaxed max-w-sm">
-              Platform digital untuk Koperasi Indonesia. Memberdayakan ekonomi lokal dengan teknologi modern.
-            </p>
-            <div className="flex justify-center md:justify-start gap-4 mt-2">
-              <div className="w-8 h-8 rounded-full bg-surface-variant/20 flex items-center justify-center hover:bg-surface-variant/40 cursor-pointer transition-colors">
-                <span className="material-symbols-outlined text-[18px]">public</span>
+      <footer className="bg-surface-container-lowest border-t border-outline-variant w-full mt-auto">
+        <div className="px-margin-page py-12 md:py-16 max-w-screen-xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-16">
+
+            {/* Brand Info */}
+            <div className="flex flex-col gap-5">
+              <span className="font-headline-sm text-headline-sm text-primary flex items-center gap-2 font-extrabold">
+                <span className="material-symbols-outlined text-primary text-[32px]" data-weight="fill">storefront</span>
+                KopasNow
+              </span>
+              <p className="text-body-md font-body-md text-secondary leading-relaxed pr-4">
+                Platform yang mengutamakan kemudahan belanja kebutuhan harian dari koperasi terdekat secara cepat dan terpercaya.
+              </p>
+              <div className="flex items-center gap-3 mt-2">
+                <a href="#" className="w-10 h-10 rounded-full bg-surface-container border border-outline-variant flex items-center justify-center hover:bg-primary hover:text-on-primary hover:border-primary transition-all text-secondary">
+                  <span className="material-symbols-outlined text-[20px]">public</span>
+                </a>
+                <a href="#" className="w-10 h-10 rounded-full bg-surface-container border border-outline-variant flex items-center justify-center hover:bg-primary hover:text-on-primary hover:border-primary transition-all text-secondary">
+                  <span className="material-symbols-outlined text-[20px]">share</span>
+                </a>
+                <a href="#" className="w-10 h-10 rounded-full bg-surface-container border border-outline-variant flex items-center justify-center hover:bg-primary hover:text-on-primary hover:border-primary transition-all text-secondary">
+                  <span className="material-symbols-outlined text-[20px]">mail</span>
+                </a>
               </div>
-              <div className="w-8 h-8 rounded-full bg-surface-variant/20 flex items-center justify-center hover:bg-surface-variant/40 cursor-pointer transition-colors">
-                <span className="material-symbols-outlined text-[18px]">share</span>
-              </div>
+            </div>
+
+            {/* Contact */}
+            <div>
+              <h3 className="text-title-md font-title-md font-bold text-on-surface mb-5">Kontak & Lokasi</h3>
+              <ul className="space-y-5 flex flex-col">
+                <li className="flex items-start gap-3">
+                  <span className="material-symbols-outlined text-primary shrink-0 mt-0.5">location_on</span>
+                  <span className="text-body-md font-body-md text-secondary leading-relaxed">Jl. Merdeka No. 45, Jakarta Pusat, DKI Jakarta 10110</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="material-symbols-outlined text-primary shrink-0 mt-0.5">call</span>
+                  <span className="text-body-md font-body-md text-secondary">0812-3456-7890</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="material-symbols-outlined text-primary shrink-0 mt-0.5">mail</span>
+                  <span className="text-body-md font-body-md text-secondary">halo@kopasnow.id</span>
+                </li>
+              </ul>
             </div>
           </div>
         </div>
-        <div className="border-t border-surface-variant/20 px-margin-page py-6 max-w-screen-xl mx-auto flex flex-col md:flex-row items-center justify-between text-xs">
-          <p className="text-surface-variant">© 2026 KopasNow. Memberdayakan Ekonomi Desa Merah Putih.</p>
+        
+        {/* Bottom Bar */}
+        <div className="border-t border-outline-variant bg-surface-container-low">
+          <div className="px-margin-page py-6 max-w-screen-xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-left">
+            <p className="text-body-sm font-body-sm text-secondary font-medium">© 2026 KopasNow. Memberdayakan Koperasi Merah Putih.</p>
+            <div className="flex flex-wrap items-center justify-center md:justify-end gap-3">
+              <span className="text-body-sm font-body-sm text-secondary">Metode Pembayaran:</span>
+              <span className="px-3 py-1.5 bg-surface-container-lowest border border-outline-variant rounded-md text-label-sm font-label-sm text-secondary font-bold shadow-sm">Transfer</span>
+              <span className="px-3 py-1.5 bg-surface-container-lowest border border-outline-variant rounded-md text-label-sm font-label-sm text-secondary font-bold shadow-sm">COD</span>
+            </div>
+          </div>
         </div>
       </footer>
     </div>

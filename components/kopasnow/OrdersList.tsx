@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Package, Search } from "lucide-react";
 
 // Enam status sesuai constraint di database (kopasnow_online_transactions_header)
 type TransactionStatus = "Menunggu" | "Dibayar" | "Siap" | "Dikirim" | "Diterima" | "Selesai";
@@ -75,10 +74,10 @@ export default function OrdersList({ transactions }: OrdersListProps) {
 
   if (!transactions || transactions.length === 0) {
     return (
-      <div className="bg-white border border-slate-100 rounded-2xl p-8 text-center flex flex-col items-center">
-        <Package className="w-12 h-12 text-slate-300 mb-3" />
-        <p className="text-slate-800 text-lg font-bold mb-1">Belum Ada Pesanan</p>
-        <p className="text-slate-600 text-base">Riwayat pemesanan Anda akan muncul di sini</p>
+      <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-8 text-center flex flex-col items-center shadow-sm">
+        <span className="material-symbols-outlined text-5xl text-secondary mb-4" aria-hidden>package</span>
+        <p className="text-on-surface text-headline-sm font-headline-sm font-bold mb-2">Belum Ada Pesanan</p>
+        <p className="text-secondary text-body-md font-body-md">Riwayat pemesanan Anda akan muncul di sini</p>
       </div>
     );
   }
@@ -94,7 +93,7 @@ export default function OrdersList({ transactions }: OrdersListProps) {
       <div
         role="tablist"
         aria-label="Saring pesanan menurut status"
-        className="flex gap-2 overflow-x-auto pb-2 mb-4 hide-scrollbar"
+        className="flex gap-3 overflow-x-auto pb-4 mb-6 hide-scrollbar"
       >
         {tabs.map((tab) => {
           const isActive = activeStatus === tab.key;
@@ -105,28 +104,28 @@ export default function OrdersList({ transactions }: OrdersListProps) {
               role="tab"
               aria-selected={isActive}
               onClick={() => setActiveStatus(tab.key)}
-              className={`shrink-0 min-h-[48px] px-4 rounded-full border-2 text-base font-bold transition-colors cursor-pointer ${isActive
-                ? "bg-[#CE1126] text-white border-[#CE1126]"
-                : "bg-white text-slate-700 border-slate-200 hover:border-slate-300"
+              className={`shrink-0 min-h-[40px] px-6 rounded-full border text-label-md font-label-md font-bold transition-colors cursor-pointer ${isActive
+                ? "bg-primary text-on-primary border-primary shadow-sm"
+                : "bg-surface-container-lowest text-secondary border-outline-variant hover:bg-surface-variant hover:text-on-surface"
                 }`}
             >
               {tab.label}
-              <span className={isActive ? "text-white/80" : "text-slate-500"}> ({count})</span>
+              <span className={isActive ? "text-primary-fixed ml-1 font-normal" : "text-secondary ml-1 font-normal"}> ({count})</span>
             </button>
           );
         })}
       </div>
 
       {visible.length === 0 ? (
-        <div className="bg-white border border-slate-100 rounded-2xl p-8 text-center flex flex-col items-center">
-          <Search className="w-12 h-12 text-slate-300 mb-3" />
-          <p className="text-slate-800 text-lg font-bold mb-1">
+        <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-8 text-center flex flex-col items-center shadow-sm">
+          <span className="material-symbols-outlined text-5xl text-secondary mb-4" aria-hidden>search</span>
+          <p className="text-on-surface text-headline-sm font-headline-sm font-bold mb-2">
             Tidak ada pesanan berstatus &quot;
             {activeStatus === "all" ? "Semua" : statusConfig[activeStatus].tab}&quot;
           </p>
           <button
             onClick={() => setActiveStatus("all")}
-            className="mt-3 min-h-[48px] px-6 text-base font-bold text-[#CE1126] hover:underline cursor-pointer"
+            className="mt-4 min-h-[48px] px-6 text-label-md font-label-md font-bold text-primary hover:underline cursor-pointer"
           >
             Lihat Semua Pesanan
           </button>
@@ -157,59 +156,59 @@ export default function OrdersList({ transactions }: OrdersListProps) {
               <Link
                 key={transaction.id_transaksi}
                 href={`/orders/${transaction.id_transaksi}`}
-                className="block bg-white border border-slate-100 rounded-2xl p-4 hover:border-slate-200 hover:shadow-md hover:shadow-slate-100 transition-all duration-200"
+                className="block bg-surface-container-lowest border border-outline-variant rounded-xl p-5 hover:shadow-[0_12px_40px_rgba(0,0,0,0.04)] transition-shadow duration-200 group"
               >
                 {/* Header */}
-                <div className="flex items-start justify-between mb-3 pb-3 border-b border-slate-100">
+                <div className="flex items-start justify-between mb-4 pb-4 border-b border-outline-variant/30">
                   <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <p className="text-[10px] font-mono text-secondary uppercase tracking-wider">
                         Kode Pesanan
                       </p>
                       <div className="flex items-center gap-1">
-                        <span className="w-1 h-1 rounded-full bg-slate-300"></span>
-                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                        <span className="w-1 h-1 rounded-full bg-outline-variant"></span>
+                        <p className="text-[10px] font-bold text-secondary uppercase tracking-wider">
                           {deliveryType}
                         </p>
                       </div>
                     </div>
-                    <p className="text-xs font-bold text-[#CE1126] font-mono">
+                    <p className="text-label-md font-label-md font-bold text-primary font-mono group-hover:underline">
                       {transaction.id_transaksi.split("-")[0].toUpperCase()}
                     </p>
                   </div>
-                  <div className={`px-2 py-1 rounded-md text-[10px] font-bold border ${statusInfo.bgColor} ${statusInfo.color} ${statusInfo.borderColor}`}>
+                  <div className={`px-2.5 py-1 rounded-md text-[10px] font-bold border ${statusInfo.bgColor} ${statusInfo.color} ${statusInfo.borderColor}`}>
                     {statusInfo.label}
                   </div>
                 </div>
 
                 {/* Koperasi Info */}
-                <div className="mb-3">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <span className="text-xs">🏪</span>
-                    <p className="text-sm font-bold text-slate-800">
+                <div className="mb-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="material-symbols-outlined text-[16px] text-secondary">storefront</span>
+                    <p className="text-label-md font-label-md font-bold text-on-surface">
                       {transaction.kopasnow_koperasi.nama}
                     </p>
                   </div>
-                  <p className="text-[10px] font-medium text-slate-400">
+                  <p className="text-[10px] font-medium text-secondary pl-6">
                     {transaction.kopasnow_koperasi.kode_koperasi}
                   </p>
                 </div>
 
                 {/* Items Preview */}
-                <div className="mb-3">
-                  <div className="space-y-1">
+                <div className="mb-4">
+                  <div className="space-y-2">
                     {transaction.kopasnow_online_transactions_detail.slice(0, 2).map((item) => (
-                      <div key={item.id_detail} className="flex justify-between items-center">
-                        <p className="text-xs text-slate-600 truncate max-w-[200px]">
-                          {item.nama_produk} <span className="text-slate-400">x{item.jumlah}</span>
+                      <div key={item.id_detail} className="flex justify-between items-center gap-4">
+                        <p className="text-label-sm font-label-sm text-secondary truncate flex-1">
+                          {item.nama_produk} <span className="text-secondary/70">x{item.jumlah}</span>
                         </p>
-                        <p className="text-xs font-medium text-slate-700">
+                        <p className="text-label-sm font-label-sm font-medium text-on-surface shrink-0">
                           Rp {item.subtotal.toLocaleString("id-ID")}
                         </p>
                       </div>
                     ))}
                     {transaction.kopasnow_online_transactions_detail.length > 2 && (
-                      <p className="text-[10px] text-slate-400 italic">
+                      <p className="text-[10px] text-secondary italic mt-2">
                         +{transaction.kopasnow_online_transactions_detail.length - 2} produk lainnya
                       </p>
                     )}
@@ -217,26 +216,26 @@ export default function OrdersList({ transactions }: OrdersListProps) {
                 </div>
 
                 {/* Footer */}
-                <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                <div className="flex items-end justify-between pt-4 border-t border-outline-variant/30">
                   <div>
-                    <p className="text-sm text-slate-500 mb-0.5">
+                    <p className="text-label-sm font-label-sm text-secondary mb-1">
                       Total Pembayaran
                       {transaction.delivery_fee > 0 && (
-                        <span className="text-slate-400">
+                        <span className="text-secondary/70">
                           {" "}
                           (termasuk ongkir Rp {transaction.delivery_fee.toLocaleString("id-ID")})
                         </span>
                       )}
                     </p>
-                    <p className="text-base font-black text-slate-800">
+                    <p className="text-body-lg font-body-lg font-bold text-on-surface">
                       Rp {(transaction.total_pembelian + transaction.delivery_fee).toLocaleString("id-ID")}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm text-slate-500">
+                    <p className="text-[10px] text-secondary mb-1">
                       {formattedDate} • {formattedTime}
                     </p>
-                    <p className="text-sm font-medium text-slate-600">
+                    <p className="text-label-sm font-label-sm font-bold text-secondary">
                       {totalItems} barang • {transaction.metode_pembayaran}
                     </p>
                   </div>

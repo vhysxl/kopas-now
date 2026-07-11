@@ -1,16 +1,29 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
+import { Inter, Hanken_Grotesk, Geist } from "next/font/google";
 import "./globals.css";
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { createAdminClient } from "@/utils/supabase/admin";
 import AuthProvider from "@/components/AuthProvider";
 import ToastProvider from "@/components/kopasnow/ToastProvider";
+import ChatBotWidget from "@/components/kopasnow/ChatBotWidget";
 
-const plusJakartaSans = Plus_Jakarta_Sans({
-  variable: "--font-plus-jakarta-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "500", "600"],
+});
+
+const hankenGrotesk = Hanken_Grotesk({
+  variable: "--font-hanken-grotesk",
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+});
+
+const geist = Geist({
+  variable: "--font-geist",
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
 });
 
 export const metadata: Metadata = {
@@ -48,14 +61,17 @@ export default async function RootLayout({
   return (
     <html
       lang="id"
-      className={`${plusJakartaSans.variable} h-full antialiased`}
+      className={`${inter.variable} ${hankenGrotesk.variable} ${geist.variable} font-body-md bg-background text-on-background h-full antialiased`}
     >
       <head>
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
       </head>
       <body className="min-h-full flex flex-col">
         <AuthProvider initialUser={user} initialCustomer={customer}>
-          <ToastProvider>{children}</ToastProvider>
+          <ToastProvider>
+            {children}
+            <ChatBotWidget />
+          </ToastProvider>
         </AuthProvider>
       </body>
     </html>

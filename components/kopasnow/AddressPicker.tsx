@@ -3,13 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { searchAddress, getFullAddress, type AddressSuggestion } from "@/utils/helper/geo";
-import { MapPin } from "lucide-react";
 
 const AddressMap = dynamic(() => import("@/components/kopasnow/AddressMap"), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-full bg-surface-container animate-pulse flex items-center justify-center">
-      <p className="text-sm text-secondary font-medium">Sedang membuka peta...</p>
+    <div className="w-full h-full bg-surface-container-low animate-pulse flex items-center justify-center">
+      <p className="text-body-sm font-body-sm text-secondary font-medium">Sedang membuka peta...</p>
     </div>
   ),
 });
@@ -139,10 +138,10 @@ export default function AddressPicker({ value, onChange }: AddressPickerProps) {
   }, [handleMapPick]);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {/* Input alamat + dropdown rekomendasi */}
       <div className="relative" ref={containerRef}>
-        <label htmlFor="alamat" className="text-base font-bold text-on-surface block mb-1.5">
+        <label htmlFor="alamat" className="text-label-md font-label-md font-bold text-on-surface block mb-2">
           Alamat rumah Anda
         </label>
         <input
@@ -153,23 +152,23 @@ export default function AddressPicker({ value, onChange }: AddressPickerProps) {
           onChange={(e) => onChange({ ...value, address: e.target.value })}
           onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
           placeholder="Ketik nama jalan atau desa, contoh: Jl. Mawar Cikarang"
-          className="w-full min-h-[52px] px-4 bg-white border-2 border-slate-300 focus:border-[#CE1126] rounded-xl text-base text-slate-900 placeholder-slate-400 outline-none"
+          className="w-full min-h-[56px] px-4 bg-surface-container-lowest border border-outline focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-body-md font-body-md text-on-surface placeholder:text-secondary outline-none transition-all"
         />
 
         {isSearching && (
-          <p className="text-sm text-slate-500 mt-1.5">Mencari alamat...</p>
+          <p className="text-body-sm font-body-sm text-secondary mt-2">Mencari alamat...</p>
         )}
 
         {showSuggestions && suggestions.length > 0 && (
-          <ul className="absolute z-20 left-0 right-0 mt-1 bg-white border-2 border-slate-200 rounded-xl shadow-lg overflow-hidden max-h-64 overflow-y-auto">
+          <ul className="absolute z-20 left-0 right-0 mt-2 bg-surface-container-lowest border border-outline-variant rounded-xl shadow-md overflow-hidden max-h-64 overflow-y-auto">
             {suggestions.map((item, idx) => (
               <li key={`${item.lat}-${item.lng}-${idx}`}>
                 <button
                   type="button"
                   onClick={() => pickSuggestion(item)}
-                  className="w-full text-left px-4 py-3 min-h-[52px] text-base text-slate-800 hover:bg-slate-50 border-b border-slate-100 last:border-b-0 flex items-start gap-2 cursor-pointer"
+                  className="w-full text-left px-4 py-3 min-h-[56px] text-body-md font-body-md text-on-surface hover:bg-surface-container-low border-b border-outline-variant last:border-b-0 flex items-start gap-3 cursor-pointer transition-colors"
                 >
-                  <span className="text-slate-400 mt-0.5 shrink-0"><MapPin className="w-5 h-5" /></span>
+                  <span className="material-symbols-outlined text-secondary mt-0.5 shrink-0" aria-hidden>location_on</span>
                   <span className="flex-1">{item.address}</span>
                 </button>
               </li>
@@ -183,32 +182,32 @@ export default function AddressPicker({ value, onChange }: AddressPickerProps) {
         type="button"
         onClick={useCurrentLocation}
         disabled={isLocating}
-        className="w-full min-h-[52px] bg-white hover:bg-slate-50 text-slate-800 border-2 border-slate-300 rounded-xl text-base font-bold flex items-center justify-center gap-2 transition-colors disabled:opacity-60 cursor-pointer"
+        className="w-full min-h-[56px] bg-surface-container-lowest hover:bg-surface-container-low text-on-surface border border-outline-variant rounded-full text-label-md font-label-md font-bold flex items-center justify-center gap-2 transition-colors disabled:opacity-60 cursor-pointer shadow-sm"
       >
-        <span className="text-slate-400 shrink-0"><MapPin className="w-5 h-5" /></span>
+        <span className="material-symbols-outlined text-secondary shrink-0" aria-hidden>my_location</span>
         {isLocating ? "Mencari lokasi Anda..." : "Gunakan Lokasi Saya Sekarang"}
       </button>
 
       {locateError && (
-        <p className="text-sm font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-3">
+        <p className="text-body-sm font-body-sm font-semibold text-error-container-on bg-error-container border border-error/20 rounded-xl p-3 shadow-sm">
           {locateError}
         </p>
       )}
 
       {/* Peta: geser penanda atau tekan titik rumah */}
       <div>
-        <p className="text-sm text-slate-600 mb-1.5">
+        <p className="text-body-sm font-body-sm text-secondary mb-2">
           Geser penanda merah tepat ke rumah Anda supaya kurir tidak tersesat.
         </p>
-        <div className="w-full h-[280px] rounded-xl overflow-hidden border-2 border-slate-200">
+        <div className="w-full h-[280px] rounded-xl overflow-hidden border border-outline-variant shadow-sm">
           <AddressMap position={position} onPick={handleMapPick} />
         </div>
         {hasPin ? (
-          <p className="text-sm text-emerald-700 font-semibold mt-1.5">
-            ✓ Titik rumah sudah ditandai di peta.
+          <p className="text-label-sm font-label-sm text-tertiary font-bold mt-2 flex items-center gap-1">
+            <span className="material-symbols-outlined text-[16px]" aria-hidden>check_circle</span> Titik rumah sudah ditandai di peta.
           </p>
         ) : (
-          <p className="text-sm text-slate-500 mt-1.5">
+          <p className="text-label-sm font-label-sm text-secondary mt-2">
             Titik rumah belum ditandai. Tekan peta atau gunakan lokasi Anda.
           </p>
         )}

@@ -255,91 +255,110 @@ export default function Home() {
     );
   }
 
-  if (!user) {
-    return null; // Middleware handles redirect
-  }
+
 
   return (
     <div className="bg-background text-on-background font-body-md min-h-screen flex flex-col pb-20 md:pb-0">
       {/* TopNavBar */}
-      <header className="bg-surface text-primary font-body-md text-body-md w-full sticky top-0 z-50 border-b border-surface-variant shadow-sm transition-all duration-200">
-        <div className="flex items-center justify-between px-margin-page py-stack-sm max-w-screen-xl mx-auto w-full">
-          {/* Brand & Search Left */}
-          <div className="flex items-center gap-stack-lg flex-1">
+      <header className="w-full sticky top-0 z-40 bg-surface border-b border-outline-variant shadow-sm transition-all duration-200">
+        <div className="flex items-center justify-between px-5 md:px-16 py-3 w-full max-w-screen-xl mx-auto">
+          {/* Brand & Location Left */}
+          <div className="flex items-center gap-4 md:gap-8 flex-1">
             <Link className="font-headline-md text-headline-md font-bold text-primary flex items-center gap-2" href="/">
               <span className="material-symbols-outlined" data-weight="fill">storefront</span>
-              KopasNow
+              <span className="hidden md:inline">KopasNow</span>
             </Link>
-            {/* Search Bar */}
-            <SearchBar className="hidden md:block flex-1 max-w-xl" />
+            
+            <LocationIndicator />
+          </div>
+
+          {/* Search Bar - Center (Desktop) */}
+          <div className="hidden md:flex flex-1 max-w-md mx-6">
+            <SearchBar className="w-full" />
           </div>
           {/* Right Actions */}
-          <div className="flex items-center gap-stack-sm md:gap-stack-md">
-            <LocationIndicator />
-            <div className="flex gap-2">
+          <div className="flex items-center gap-2 md:gap-4">
+            <div className="flex gap-1 md:gap-2 relative">
               <Link
                 href="/keranjang"
                 aria-label={`Keranjang, ${totalCartItems} barang`}
-                className="p-2 min-h-[48px] min-w-[48px] flex items-center justify-center text-secondary hover:text-primary transition-colors hover:bg-surface-container-low rounded-full relative"
+                className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-primary hover:bg-surface-variant rounded-full transition-colors relative"
               >
-                <span className="material-symbols-outlined" aria-hidden>shopping_cart</span>
+                <span className="material-symbols-outlined" aria-hidden>shopping_basket</span>
                 {totalCartItems > 0 && (
-                  <span className="absolute top-0 right-0 min-w-[20px] h-[20px] px-1 bg-primary text-on-primary text-xs font-bold rounded-full flex items-center justify-center">
-                    {totalCartItems}
-                  </span>
+                  <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-error border-2 border-surface rounded-full"></span>
                 )}
               </Link>
               <NotificationBell />
             </div>
-            <Link href="/orders" className="hidden md:block bg-primary hover:bg-primary-container text-on-primary font-label-lg text-label-lg px-6 py-2 rounded-full transition-colors font-semibold">
-              Pesanan Saya
-            </Link>
-            <Link href="/akun" className="hidden md:flex items-center gap-2 px-3 py-1.5 hover:bg-surface-container-low rounded-full">
-              <div className="w-8 h-8 rounded-full bg-primary-fixed border border-primary/20 flex items-center justify-center text-sm font-bold text-primary">
-                {nama.charAt(0).toUpperCase()}
-              </div>
-              <span className="font-label-lg text-label-lg text-on-surface hidden lg:inline">{nama}</span>
-            </Link>
+
+            <div className="hidden md:flex gap-4 items-center ml-2 border-l border-outline-variant pl-4">
+              <Link href="/" className="font-label-md text-label-md text-primary font-bold hover:bg-surface-variant transition-colors py-2 px-4 rounded-full">
+                Beranda
+              </Link>
+              {user ? (
+                <>
+                  <Link href="/orders" className="font-label-md text-label-md text-secondary hover:bg-surface-variant transition-colors py-2 px-4 rounded-full">
+                    Pesanan
+                  </Link>
+                  <Link href="/akun" className="font-label-md text-label-md text-secondary hover:bg-surface-variant transition-colors py-2 px-4 rounded-full flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full bg-primary-fixed border border-primary/20 flex items-center justify-center text-xs font-bold text-primary">
+                      {nama.charAt(0).toUpperCase()}
+                    </div>
+                    Profil
+                  </Link>
+                </>
+              ) : (
+                <Link href="/auth" className="bg-primary text-on-primary font-label-md text-label-md hover:bg-surface-tint transition-colors py-2 px-6 rounded-full ml-2">
+                  Masuk / Daftar
+                </Link>
+              )}
+            </div>
           </div>
+        </div>
+
+        {/* Mobile Search Bar */}
+        <div className="md:hidden px-5 pb-3 w-full border-t border-outline-variant mt-2 pt-2">
+          <SearchBar className="w-full" />
         </div>
       </header>
 
       {/* Main Content */}
       <div className="flex flex-1 w-full">
-        <main className="flex-1 p-margin-page md:p-stack-lg overflow-x-hidden max-w-screen-xl mx-auto w-full">
-          {/* Welcome User & Mobile Search */}
+        <main className="flex-1 px-5 py-4 md:px-stack-lg md:py-stack-lg overflow-x-hidden max-w-screen-xl mx-auto w-full">
+          {/* Welcome User - Mobile Only */}
           <div className="mb-6 md:hidden">
-            <p className="text-base text-secondary">Halo, <strong>{nama}</strong>!</p>
-            <h1 className="text-headline-md text-headline-sm font-bold text-on-surface mt-1">Mau belanja apa hari ini?</h1>
-            <div className="mt-3">
-              <SearchBar placeholder="Cari beras, minyak, koperasi..." />
-            </div>
+            {user ? (
+              <p className="text-base text-secondary">Halo, <strong>{nama}</strong>!</p>
+            ) : (
+              <p className="text-base text-secondary">Halo, <strong>Tamu</strong>!</p>
+            )}
+            <h1 className="text-headline-md font-bold text-on-surface mt-1">Mau belanja apa hari ini?</h1>
           </div>
 
           {/* Hero Banner */}
-          <section className="w-full rounded-xl overflow-hidden relative min-h-[220px] md:min-h-[300px] flex items-center mb-section-gap shadow-sm">
-            <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuCIIVZ1tI8WsfkczYq-QWD1pWnqhTI8cNmcHF-WeVkY2dh6t_4sgYEOztqTvfymO9ugwI-1w1Lmq7zZQFBgnjgJzGGbNZGut8DZ-k_JiZkEbLccdPcDS_3VY6qtdPmK8V_o5yBGzV0tsr2cCcdqSyVG8kbLvHLZMMAlxVESA6d00ga6WfTsKS_6ZaNMc_ztVnB6SjOOw9fTsvGBA3lW3Z9Tmsgcj1d9H0rlUOtAwHzWwB1ttZsyDo2aQw')" }}></div>
-            <div className="absolute inset-0 bg-gradient-to-r from-primary-container/90 to-transparent"></div>
-            <div className="relative z-10 p-stack-lg md:p-12 max-w-2xl text-on-primary-container">
-              <span className="bg-surface-container-lowest text-primary font-label-sm px-3 py-1 rounded-full uppercase tracking-wider mb-3 inline-block text-xs font-bold">Spesial Agustus</span>
-              <h1 className="font-headline-lg text-headline-lg-mobile md:text-headline-lg font-bold mb-3">Promo Merdeka!</h1>
-              <p className="font-body-lg text-body-lg mb-5 opacity-95 text-sm md:text-base">Belanja kebutuhan pokok langsung dari Koperasi Desa terdekat. Dukung ekonomi desa, harga jujur dan bersahabat.</p>
-              <button
+          <section className="w-full rounded-xl overflow-hidden relative mb-6">
+            <img className="w-full h-48 md:h-[400px] object-cover" src="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80" alt="Belanja Mudah di Koperasi"/>
+            <div className="absolute inset-0 bg-gradient-to-r from-on-background/80 to-transparent flex flex-col justify-center p-6 md:p-16">
+              <h1 className="font-display-lg text-headline-lg-mobile md:text-display-lg text-on-primary mb-2">Belanja Lebih Mudah</h1>
+              <p className="font-body-lg text-body-md md:text-body-lg text-on-primary mb-6 max-w-md">Nikmati kemudahan belanja kebutuhan harian dari koperasi terdekat, langsung ke rumah Anda.</p>
+              <button 
                 onClick={() => {
                   const target = document.getElementById("rekomendasi-produk");
                   target?.scrollIntoView({ behavior: "smooth" });
                 }}
-                className="bg-surface-container-lowest text-primary hover:bg-surface font-label-lg px-8 py-3 rounded-full transition-all hover:scale-105 active:scale-95 shadow-sm text-sm font-bold"
+                className="bg-primary text-on-primary font-label-md text-label-md py-3 px-6 rounded-full w-fit hover:bg-surface-tint transition-colors cursor-pointer"
               >
                 Belanja Sekarang
               </button>
             </div>
           </section>
 
+
           {/* Koperasi Terdekat (Split Layout Peta & Daftar) */}
           <section className="mb-section-gap">
             <div className="flex items-center justify-between gap-3 mb-stack-md flex-wrap">
-              <h2 className="font-headline-md text-headline-md text-on-surface">
+              <h2 className="font-headline-md text-headline-md font-bold text-on-surface">
                 {activeCategory
                   ? `Koperasi Kategori "${activeCategory.toUpperCase()}"`
                   : isViewingOtherCity && locationLabel
@@ -360,16 +379,16 @@ export default function Home() {
                 <button
                   onClick={() => setPickMode((v) => !v)}
                   aria-pressed={pickMode}
-                  className={`min-h-[48px] px-4 rounded-full text-base font-bold flex items-center gap-1.5 transition-colors cursor-pointer border-2 ${
+                  className={`min-h-[40px] px-4 rounded-full text-sm font-bold flex items-center gap-1.5 transition-colors cursor-pointer border ${
                     pickMode
                       ? "bg-primary text-on-primary border-primary"
-                      : "bg-surface text-on-surface border-outline-variant hover:border-primary/40"
+                      : "bg-surface text-on-surface border-outline-variant hover:bg-surface-variant"
                   }`}
                 >
-                  <span className="material-symbols-outlined text-[20px]" aria-hidden>
+                  <span className="material-symbols-outlined text-[18px]" aria-hidden>
                     {pickMode ? "close" : "add_location_alt"}
                   </span>
-                  {pickMode ? "Batal menandai" : "Tandai titik sendiri"}
+                  {pickMode ? "Batal" : "Tandai Peta"}
                 </button>
               </div>
             </div>
@@ -456,24 +475,21 @@ export default function Home() {
                     return (
                       <div
                         key={koperasi.id}
-                        className={`p-3 rounded-lg border transition-all ${
+                        className={`bg-surface-container-lowest border rounded-xl p-4 flex gap-4 transition-shadow cursor-pointer ${
                           isSelected
-                            ? "border-primary bg-primary/5 ring-1 ring-primary/30"
-                            : "border-surface-variant hover:border-primary/30 hover:bg-surface-container-low"
+                            ? "border-primary shadow-[0_12px_40px_rgba(175,16,26,0.1)]"
+                            : "border-outline-variant hover:shadow-[0_12px_40px_rgba(0,0,0,0.04)]"
                         }`}
                       >
                         {/* Klik kartu menyorot titiknya di peta, bukan pindah halaman */}
-                        <button
-                          type="button"
+                        <div
                           onClick={() => handleSelectKoperasi(koperasi.id)}
+                          role="button"
+                          tabIndex={0}
                           aria-pressed={isSelected}
-                          className="flex gap-4 w-full text-left cursor-pointer"
+                          className="flex gap-4 w-full text-left"
                         >
-                          <div
-                            className={`w-16 h-16 rounded-lg shrink-0 overflow-hidden border ${
-                              isSelected ? "border-primary" : "border-primary/20"
-                            }`}
-                          >
+                          <div className="w-20 h-20 bg-surface-container-low rounded-lg border border-outline-variant flex-shrink-0 flex items-center justify-center overflow-hidden">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                               src={koperasiImage(koperasi.id, 128, 128)}
@@ -482,37 +498,37 @@ export default function Home() {
                               loading="lazy"
                             />
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex justify-between items-start gap-2">
-                              <h3 className="font-headline-sm text-headline-sm text-on-surface line-clamp-1">{koperasi.nama}</h3>
-                              {koperasi.status === "active" ? (
-                                <span className="bg-tertiary-container/20 text-tertiary px-2 py-0.5 rounded-full text-sm font-bold shrink-0">Buka</span>
-                              ) : (
-                                <span className="bg-outline-variant text-secondary px-2 py-0.5 rounded-full text-sm font-bold shrink-0">Tutup</span>
-                              )}
+                          <div className="flex flex-col justify-between flex-1">
+                            <div>
+                              <h3 className="font-label-md text-label-md font-bold">{koperasi.nama}</h3>
+                              <p className="font-label-sm text-label-sm text-secondary flex items-center gap-1 mt-1">
+                                <span className="material-symbols-outlined text-[14px]">directions_walk</span> 
+                                {hasLocation && koperasi.distance > 0 ? formatDistance(koperasi.distance) : "Jarak tidak diketahui"}
+                              </p>
+                              <p className="text-secondary text-xs mt-1 line-clamp-1">{koperasi.alamat || "Alamat belum dicatat"}</p>
                             </div>
-                            <p className="text-secondary text-base mt-1 line-clamp-1">{koperasi.alamat || "Alamat belum dicatat"}</p>
-                            <div className="flex items-center gap-1 mt-2 text-on-surface-variant text-sm font-bold">
-                              <span className="material-symbols-outlined text-[16px]" aria-hidden>location_on</span>
-                              <span>{hasLocation && koperasi.distance > 0 ? formatDistance(koperasi.distance) : "Jarak tidak diketahui"}</span>
-                              {isSelected && (
-                                <>
-                                  <span className="mx-1">•</span>
-                                  <span className="text-primary">Ditandai di peta</span>
-                                </>
-                              )}
+                            <div className="flex gap-2 mt-2 items-center justify-between">
+                              <div className="flex gap-2">
+                                {koperasi.status === "active" ? (
+                                  <span className="bg-surface-variant text-on-surface px-2 py-1 rounded-md font-label-sm text-[10px]">Buka</span>
+                                ) : (
+                                  <span className="bg-surface-variant text-on-surface px-2 py-1 rounded-md font-label-sm text-[10px] opacity-70">Tutup</span>
+                                )}
+                                {isSelected && (
+                                  <span className="bg-primary-container/10 text-primary px-2 py-1 rounded-md font-label-sm text-[10px]">Ditandai di peta</span>
+                                )}
+                              </div>
+                              
+                              <Link
+                                href={`/koperasi/${koperasi.id}`}
+                                className="border border-primary text-primary hover:bg-primary hover:text-on-primary transition-colors text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1"
+                              >
+                                Belanja
+                                <span className="material-symbols-outlined text-[14px]" aria-hidden>arrow_forward</span>
+                              </Link>
                             </div>
                           </div>
-                        </button>
-
-                        {/* Pindah halaman hanya lewat tombol yang jelas */}
-                        <Link
-                          href={`/koperasi/${koperasi.id}`}
-                          className="mt-3 w-full min-h-[48px] bg-primary hover:bg-primary-container text-on-primary rounded-full text-base font-bold flex items-center justify-center gap-1.5 transition-colors"
-                        >
-                          <span className="material-symbols-outlined text-[20px]" aria-hidden>storefront</span>
-                          Belanja di Sini
-                        </Link>
+                        </div>
                       </div>
                     );
                   })
@@ -521,30 +537,24 @@ export default function Home() {
             </div>
           </section>
 
-          {/* Kategori */}
-          <section className="mb-section-gap">
-            <h2 className="font-headline-md text-headline-md text-on-surface mb-stack-md text-center md:text-left">Kategori</h2>
-            <div className="flex overflow-x-auto pb-4 gap-4 md:gap-8 hide-scrollbar md:flex-wrap justify-start md:justify-start">
+
+
+          {/* Categories */}
+          <section className="flex flex-col gap-3 mb-10 mt-6">
+            <h2 className="font-headline-md text-headline-md font-bold text-on-surface">Kategori Pilihan</h2>
+            <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2">
               {CATEGORIES.map((cat) => {
                 const isActive = activeCategory === cat.key;
                 return (
                   <button
                     key={cat.key}
                     onClick={() => handleCategoryClick(cat.key)}
-                    className="flex flex-col items-center gap-3 min-w-[80px] group focus:outline-none cursor-pointer"
+                    className="flex flex-col items-center gap-2 min-w-[80px] cursor-pointer group"
                   >
-                    <div className={`w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center shadow-sm transition-all group-hover:scale-105 ${
-                      isActive ? cat.activeClass : "bg-surface-container-high text-on-surface-variant hover:bg-primary-container hover:text-on-primary-container"
-                    }`}>
-                      <span className="material-symbols-outlined text-3xl md:text-4xl" data-weight={isActive ? "fill" : undefined}>
-                        {cat.icon}
-                      </span>
+                    <div className={`w-16 h-16 rounded-full border border-outline-variant flex items-center justify-center transition-colors ${isActive ? "bg-primary-container/20 border-primary" : "bg-surface-container-low group-hover:bg-primary-container/10"}`}>
+                      <span className={`material-symbols-outlined text-3xl ${isActive ? "text-primary font-bold" : "text-primary"}`}>{cat.icon}</span>
                     </div>
-                    <span className={`font-label-sm text-center text-xs group-hover:text-on-surface transition-all ${
-                      isActive ? "text-on-surface font-bold" : "text-on-surface-variant font-medium"
-                    }`}>
-                      {cat.label}
-                    </span>
+                    <span className={`font-label-sm text-label-sm text-center ${isActive ? "text-primary font-bold" : "text-on-surface"}`}>{cat.label}</span>
                   </button>
                 );
               })}
@@ -554,12 +564,12 @@ export default function Home() {
           {/* Product Recommendations */}
           <section id="rekomendasi-produk" className="mb-section-gap animate-fade-in">
             <div className="flex items-center justify-between mb-stack-md">
-              <h2 className="font-headline-md text-headline-md text-on-surface">Rekomendasi Produk</h2>
+              <h2 className="font-headline-md text-headline-md font-bold text-on-surface">Rekomendasi Produk</h2>
             </div>
             {isFetching ? (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-gutter-grid md:gap-stack-md">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                 {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="aspect-square bg-surface-container animate-pulse rounded-xl animate-pulse" />
+                  <div key={i} className="aspect-square bg-surface-container animate-pulse rounded-xl" />
                 ))}
               </div>
             ) : recommendedProducts.length === 0 ? (
@@ -569,7 +579,7 @@ export default function Home() {
                 <p className="text-secondary text-base mt-1">Belum ada produk di kategori ini.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-gutter-grid md:gap-stack-md">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                 {recommendedProducts.map((prod) => {
                   const priceNum = parseFloat(prod.harga_produk);
                   const coopName = koperasiList.find((k) => k.id === prod.koperasi_id)?.nama || "Koperasi Desa";
@@ -577,40 +587,40 @@ export default function Home() {
                   return (
                     <div
                       key={prod.id_produk}
-                      className="bg-surface-container-lowest border border-surface-variant rounded-xl overflow-hidden hover:shadow-md transition-all group flex flex-col"
+                      className="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden hover:shadow-[0_12px_40px_rgba(0,0,0,0.04)] transition-shadow flex flex-col group"
                     >
-                      {/* Menekan foto/nama membuka detail; tombol + tetap jalur cepat */}
-                      <Link href={`/produk/${prod.id_produk}`} className="flex flex-col">
-                        <div className="aspect-square w-full relative bg-surface-container-low overflow-hidden flex items-center justify-center">
-                          {prod.foto_url ? (
-                            // eslint-disable-next-line @next/next/no-img-element
+                      <Link href={`/produk/${prod.id_produk}`} className="flex flex-col flex-1">
+                        {prod.foto_url && (
+                          <div className="h-32 bg-surface-container-low flex items-center justify-center overflow-hidden">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                               alt={prod.nama_produk}
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                               src={prod.foto_url}
                               loading="lazy"
                             />
-                          ) : (
-                            <span className="material-symbols-outlined text-5xl text-on-surface-variant" aria-hidden>shopping_basket</span>
-                          )}
-                        </div>
-                        <div className="px-3 pt-3">
-                          <h3 className="text-on-surface line-clamp-2 mb-1 font-semibold text-base leading-snug">
+                          </div>
+                        )}
+                        <div className="p-3 flex flex-col gap-1 justify-between flex-1">
+                          <h3 className="font-label-sm text-label-sm font-bold line-clamp-2 text-on-surface">
                             {prod.nama_produk}
                           </h3>
-                          <p className="text-secondary text-sm mb-3 font-medium">{coopName}</p>
+                          <p className="font-body-md text-body-md text-primary font-bold">
+                            Rp {priceNum.toLocaleString("id-ID")}
+                          </p>
+                          <p className="text-[10px] text-secondary mt-1">{coopName}</p>
                         </div>
                       </Link>
-                      <div className="px-3 pb-3 mt-auto flex items-center justify-between gap-2">
-                        <p className="font-headline-sm text-on-surface text-base font-bold">
-                          Rp {priceNum.toLocaleString("id-ID")}
-                        </p>
+                      <div className="px-3 pb-3">
                         <button
-                          onClick={() => handleAddToCart(prod)}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleAddToCart(prod);
+                          }}
                           aria-label={`Tambah ${prod.nama_produk} ke keranjang`}
-                          className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center hover:bg-primary hover:text-on-primary transition-colors cursor-pointer"
+                          className="mt-2 w-full py-1.5 border border-outline text-secondary font-label-sm text-label-sm rounded-full hover:border-primary hover:text-primary transition-colors flex items-center justify-center gap-1 cursor-pointer"
                         >
-                          <span className="material-symbols-outlined text-[24px]" aria-hidden>add</span>
+                          <span className="material-symbols-outlined text-[16px]" aria-hidden>add</span> Tambah
                         </button>
                       </div>
                     </div>
@@ -634,29 +644,62 @@ export default function Home() {
       )}
 
       {/* Footer */}
-      <footer className="bg-on-surface text-primary-fixed font-label-sm text-label-sm w-full mt-auto">
-        <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-8 px-margin-page py-section-gap text-surface-bright max-w-screen-xl mx-auto">
-          {/* Brand Info */}
-          <div className="flex flex-col gap-4 text-center md:text-left">
-            <span className="font-headline-sm text-headline-sm text-surface-bright flex items-center justify-center md:justify-start gap-2">
-              <span className="material-symbols-outlined" data-weight="fill">storefront</span>
-              KopasNow
-            </span>
-            <p className="text-surface-variant text-xs leading-relaxed max-w-sm">
-              Platform digital untuk Koperasi Indonesia. Memberdayakan ekonomi lokal dengan teknologi modern.
-            </p>
-            <div className="flex justify-center md:justify-start gap-4 mt-2">
-              <div className="w-8 h-8 rounded-full bg-surface-variant/20 flex items-center justify-center hover:bg-surface-variant/40 cursor-pointer transition-colors">
-                <span className="material-symbols-outlined text-[18px]">public</span>
+      <footer className="bg-surface-container-lowest border-t border-outline-variant w-full mt-auto">
+        <div className="px-margin-page py-12 md:py-16 max-w-screen-xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-16">
+            {/* Brand Info */}
+            <div className="flex flex-col gap-5">
+              <span className="font-headline-sm text-headline-sm text-primary flex items-center gap-2 font-extrabold">
+                <span className="material-symbols-outlined text-primary text-[32px]" data-weight="fill">storefront</span>
+                KopasNow
+              </span>
+              <p className="text-body-md font-body-md text-secondary leading-relaxed pr-4">
+                Platform yang mengutamakan kemudahan belanja kebutuhan harian dari koperasi terdekat secara cepat dan terpercaya.
+              </p>
+              <div className="flex items-center gap-3 mt-2">
+                <a href="#" className="w-10 h-10 rounded-full bg-surface-container border border-outline-variant flex items-center justify-center hover:bg-primary hover:text-on-primary hover:border-primary transition-all text-secondary">
+                  <span className="material-symbols-outlined text-[20px]">public</span>
+                </a>
+                <a href="#" className="w-10 h-10 rounded-full bg-surface-container border border-outline-variant flex items-center justify-center hover:bg-primary hover:text-on-primary hover:border-primary transition-all text-secondary">
+                  <span className="material-symbols-outlined text-[20px]">share</span>
+                </a>
+                <a href="#" className="w-10 h-10 rounded-full bg-surface-container border border-outline-variant flex items-center justify-center hover:bg-primary hover:text-on-primary hover:border-primary transition-all text-secondary">
+                  <span className="material-symbols-outlined text-[20px]">mail</span>
+                </a>
               </div>
-              <div className="w-8 h-8 rounded-full bg-surface-variant/20 flex items-center justify-center hover:bg-surface-variant/40 cursor-pointer transition-colors">
-                <span className="material-symbols-outlined text-[18px]">share</span>
-              </div>
+            </div>
+            
+            {/* Contact */}
+            <div>
+              <h3 className="text-title-md font-title-md font-bold text-on-surface mb-5">Kontak & Lokasi</h3>
+              <ul className="space-y-5 flex flex-col">
+                <li className="flex items-start gap-3">
+                  <span className="material-symbols-outlined text-primary shrink-0 mt-0.5">location_on</span>
+                  <span className="text-body-md font-body-md text-secondary leading-relaxed">Jl. Merdeka No. 45, Jakarta Pusat, DKI Jakarta 10110</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="material-symbols-outlined text-primary shrink-0 mt-0.5">call</span>
+                  <span className="text-body-md font-body-md text-secondary">0812-3456-7890</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="material-symbols-outlined text-primary shrink-0 mt-0.5">mail</span>
+                  <span className="text-body-md font-body-md text-secondary">halo@kopasnow.id</span>
+                </li>
+              </ul>
             </div>
           </div>
         </div>
-        <div className="border-t border-surface-variant/20 px-margin-page py-6 max-w-screen-xl mx-auto flex flex-col md:flex-row items-center justify-between text-xs">
-          <p className="text-surface-variant">© 2026 KopasNow. Memberdayakan Ekonomi Desa Merah Putih.</p>
+        
+        {/* Bottom Bar */}
+        <div className="border-t border-outline-variant bg-surface-container-low">
+          <div className="px-margin-page py-6 max-w-screen-xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-left">
+            <p className="text-body-sm font-body-sm text-secondary font-medium">© 2026 KopasNow. Memberdayakan Koperasi Merah Putih.</p>
+            <div className="flex flex-wrap items-center justify-center md:justify-end gap-3">
+              <span className="text-body-sm font-body-sm text-secondary">Metode Pembayaran:</span>
+              <span className="px-3 py-1.5 bg-surface-container-lowest border border-outline-variant rounded-md text-label-sm font-label-sm text-secondary font-bold shadow-sm">Transfer</span>
+              <span className="px-3 py-1.5 bg-surface-container-lowest border border-outline-variant rounded-md text-label-sm font-label-sm text-secondary font-bold shadow-sm">COD</span>
+            </div>
+          </div>
         </div>
       </footer>
 
