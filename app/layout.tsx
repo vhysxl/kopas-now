@@ -6,6 +6,7 @@ import { createClient } from "@/utils/supabase/server";
 import { createAdminClient } from "@/utils/supabase/admin";
 import AuthProvider from "@/components/AuthProvider";
 import ToastProvider from "@/components/kopasnow/ToastProvider";
+import ChatBotWidget from "@/components/kopasnow/ChatBotWidget";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   variable: "--font-plus-jakarta-sans",
@@ -55,7 +56,10 @@ export default async function RootLayout({
       </head>
       <body className="min-h-full flex flex-col">
         <AuthProvider initialUser={user} initialCustomer={customer}>
-          <ToastProvider>{children}</ToastProvider>
+          <ToastProvider>
+            {children}
+            <ChatBotWidget />
+          </ToastProvider>
         </AuthProvider>
       </body>
     </html>
