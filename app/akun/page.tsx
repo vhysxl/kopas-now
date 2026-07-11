@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useUserStore } from "@/store/useUserStore";
 import { signOutAction } from "@/server/actions/auth";
 import BottomNav from "@/components/kopasnow/BottomNav";
-import { displayName, displayPhone, realEmail } from "@/utils/helper/account";
+import { displayName, displayPhone } from "@/utils/helper/account";
 
 export default function AkunPage() {
   const user = useUserStore((state) => state.user);
@@ -12,9 +12,7 @@ export default function AkunPage() {
   const isLoading = useUserStore((state) => state.isLoading);
 
   const nama = displayName(user, customer);
-  // Akun berbasis nomor HP tidak punya email sungguhan — jangan tampilkan
   // alamat sintetis <nomor>@phone.kopasnow.com ke pengguna.
-  const email = realEmail(user, customer) || "Belum diisi";
   const phone = displayPhone(user, customer) || "-";
   const joinedDate = customer?.created_at
     ? new Date(customer.created_at).toLocaleDateString("id-ID", {
@@ -83,10 +81,6 @@ export default function AkunPage() {
               <div>
                 <span className="text-sm font-semibold text-slate-500 block">No. HP / WhatsApp</span>
                 <span className="text-base font-bold text-slate-900">{phone}</span>
-              </div>
-              <div>
-                <span className="text-sm font-semibold text-slate-500 block">Email</span>
-                <span className="text-base font-bold text-slate-900 break-all">{email}</span>
               </div>
               <div>
                 <span className="text-sm font-semibold text-slate-500 block">Bergabung sejak</span>

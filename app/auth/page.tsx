@@ -59,8 +59,8 @@ export default function AuthPage() {
 
   const handleRequestOTP = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (phone.length < 8) {
-      setError("Nomor WhatsApp tidak valid.");
+    if (!phone.startsWith("08") || phone.length < 10 || phone.length > 14) {
+      setError("Nomor WhatsApp tidak valid. Pastikan diawali '08' dan terdiri dari 10-14 angka.");
       return;
     }
     await sendCode();
@@ -117,14 +117,8 @@ export default function AuthPage() {
 
   const formatPhone = (val: string) => {
     let value = val.replace(/\D/g, "");
-    if (value.length > 13) value = value.slice(0, 13);
-    
-    let formatted = "";
-    for (let i = 0; i < value.length; i++) {
-      if (i === 3 || i === 7) formatted += " ";
-      formatted += value[i];
-    }
-    return formatted;
+    if (value.length > 14) value = value.slice(0, 14);
+    return value;
   };
 
   const handleOtpChange = (index: number, value: string) => {
@@ -212,7 +206,7 @@ export default function AuthPage() {
                       className="w-full bg-transparent border-none focus:ring-0 p-0 text-lg font-normal placeholder:text-outline-variant outline-none" 
                       id="phone_number" 
                       name="phone_number" 
-                      placeholder="812 3456 7890" 
+                      placeholder="081234567890" 
                       required 
                       type="tel"
                       value={formatPhone(phone)}
