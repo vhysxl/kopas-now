@@ -5,7 +5,6 @@ import { getProductsByKoperasiId } from "@/server/actions/getProducts";
 import ProductCatalog from "@/components/kopasnow/ProductCatalog";
 import KoperasiDistance from "@/components/kopasnow/KoperasiDistance";
 import { koperasiImage } from "@/utils/helper/koperasiImage";
-import { MapPin } from "lucide-react";
 
 interface PageProps {
   params: Promise<{
@@ -30,28 +29,20 @@ export default async function KoperasiCatalogPage({ params }: PageProps) {
   const products = productsResult.data || [];
 
   return (
-    <div className="min-h-screen bg-[#F6F6F6] font-sans text-slate-900 flex flex-col pb-28">
-      {/* Garis bendera Merah Putih */}
-      <div className="w-full h-1.5 flex fixed top-0 left-0 z-50">
-        <div className="w-1/2 bg-[#CE1126]" />
-        <div className="w-1/2 bg-white border-b border-slate-200" />
-      </div>
+    <div className="min-h-screen bg-background font-body-md text-on-background flex flex-col pb-28">
 
       {/* Header dengan tombol kembali yang jelas */}
-      <header className="bg-white border-b border-slate-200 shadow-sm sticky top-1.5 z-40">
-        <div className="max-w-2xl lg:max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
+      <header className="bg-surface border-b border-outline-variant shadow-sm sticky top-0 z-40 transition-all duration-200">
+        <div className="max-w-screen-md lg:max-w-screen-lg mx-auto px-5 py-3 flex items-center gap-3">
           <Link
             href="/"
-            className="shrink-0 inline-flex items-center gap-2 min-h-[48px] px-3 -ml-3 text-base font-bold text-slate-700 hover:text-[#CE1126] transition-colors"
+            className="shrink-0 inline-flex items-center justify-center min-h-[44px] min-w-[44px] -ml-2 text-secondary hover:bg-surface-variant rounded-full transition-colors"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-            </svg>
-            Kembali
+            <span className="material-symbols-outlined" aria-hidden>arrow_back</span>
           </Link>
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-slate-500 leading-tight">Anda belanja di:</p>
-            <h1 className="text-base font-bold text-slate-900 truncate leading-tight">
+            <p className="text-label-sm font-label-sm text-secondary leading-tight">Anda belanja di:</p>
+            <h1 className="text-label-md font-label-md font-bold text-on-surface truncate leading-tight mt-0.5">
               {koperasi.nama}
             </h1>
           </div>
@@ -59,11 +50,11 @@ export default async function KoperasiCatalogPage({ params }: PageProps) {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 max-w-2xl lg:max-w-4xl w-full mx-auto px-4 py-6 flex flex-col gap-6">
+      <main className="flex-1 max-w-screen-md lg:max-w-screen-lg w-full mx-auto px-5 py-6 flex flex-col gap-6">
         {/* Info koperasi */}
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+        <div className="bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden shadow-sm">
           {/* Foto stok — kopasnow_koperasi belum punya kolom gambar */}
-          <div className="relative h-40 sm:h-56 bg-slate-100">
+          <div className="relative h-40 sm:h-56 bg-surface-container-low">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={koperasiImage(koperasi.id)}
@@ -71,39 +62,39 @@ export default async function KoperasiCatalogPage({ params }: PageProps) {
               className="w-full h-full object-cover"
             />
             {koperasi.status === "active" ? (
-              <span className="absolute top-3 right-3 inline-flex items-center px-3 py-1.5 rounded-full text-sm font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="absolute top-4 right-4 inline-flex items-center px-4 py-1.5 rounded-full text-label-sm font-label-sm font-bold bg-tertiary-container text-on-tertiary-container border border-tertiary/20 shadow-sm">
                 Buka
               </span>
             ) : (
-              <span className="absolute top-3 right-3 inline-flex items-center px-3 py-1.5 rounded-full text-sm font-bold bg-slate-100 text-slate-600 border border-slate-300">
+              <span className="absolute top-4 right-4 inline-flex items-center px-4 py-1.5 rounded-full text-label-sm font-label-sm font-bold bg-surface-variant text-secondary border border-outline-variant shadow-sm">
                 Tutup
               </span>
             )}
           </div>
 
-          <div className="p-5">
-            <h2 className="text-xl font-extrabold text-slate-900 leading-tight">
+          <div className="p-6">
+            <h2 className="text-headline-sm font-headline-sm font-extrabold text-on-surface leading-tight">
               {koperasi.nama}
             </h2>
 
             {koperasi.alamat && (
-              <p className="text-base text-slate-600 mt-2 flex items-center gap-1">
-                <MapPin className="w-4 h-4 shrink-0" /> {koperasi.alamat}
+              <p className="text-body-md font-body-md text-secondary mt-3 flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[18px]">location_on</span> {koperasi.alamat}
               </p>
             )}
 
-            <div className="mt-2">
+            <div className="mt-3">
               <KoperasiDistance lat={koperasi.lat} lng={koperasi.lng} />
             </div>
 
-            <dl className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-slate-100">
+            <dl className="grid grid-cols-2 gap-4 mt-6 pt-5 border-t border-outline-variant/30">
               <div>
-                <dt className="text-sm text-slate-500">Barang dijual</dt>
-                <dd className="text-lg font-bold text-slate-900">{products.length} macam</dd>
+                <dt className="text-label-sm font-label-sm text-secondary">Barang dijual</dt>
+                <dd className="text-label-lg font-label-lg font-bold text-on-surface mt-1">{products.length} macam</dd>
               </div>
               <div>
-                <dt className="text-sm text-slate-500">Cara bayar</dt>
-                <dd className="text-lg font-bold text-slate-900">Transfer & COD</dd>
+                <dt className="text-label-sm font-label-sm text-secondary">Cara bayar</dt>
+                <dd className="text-label-lg font-label-lg font-bold text-on-surface mt-1">Transfer & COD</dd>
               </div>
             </dl>
           </div>
@@ -111,7 +102,7 @@ export default async function KoperasiCatalogPage({ params }: PageProps) {
 
         {/* Katalog */}
         <section>
-          <h2 className="text-lg font-bold text-slate-900 mb-3">
+          <h2 className="text-headline-md font-headline-md font-bold text-on-surface mb-4">
             Pilih barang yang Anda perlukan
           </h2>
           <ProductCatalog

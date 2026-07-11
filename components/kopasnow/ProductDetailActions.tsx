@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useAddToCart } from "@/hooks/useAddToCart";
 import CartConflictDialog from "@/components/kopasnow/CartConflictDialog";
 import { useCartStore, cartTotalItems } from "@/store/useCartStore";
-import { ShoppingCart } from "lucide-react";
 import type { KopasnowProduct } from "@/server/actions/getProducts";
 
 interface ProductDetailActionsProps {
@@ -30,7 +29,7 @@ export default function ProductDetailActions({
 
   if (outOfStock) {
     return (
-      <div className="w-full min-h-[56px] bg-slate-100 text-slate-500 rounded-xl text-lg font-bold flex items-center justify-center">
+      <div className="w-full min-h-[56px] bg-surface-variant text-secondary rounded-full text-title-md font-title-md font-bold flex items-center justify-center">
         Stok Habis
       </div>
     );
@@ -41,28 +40,28 @@ export default function ProductDetailActions({
       {qty === 0 ? (
         <button
           onClick={() => addToCart(product, koperasi)}
-          className="w-full min-h-[56px] bg-[#CE1126] hover:bg-[#A50E1E] active:bg-[#8E0C1A] text-white rounded-xl text-lg font-extrabold transition-colors cursor-pointer"
+          className="w-full min-h-[56px] bg-primary hover:bg-surface-tint active:bg-primary text-on-primary rounded-full text-title-md font-title-md font-extrabold transition-colors cursor-pointer flex items-center justify-center gap-2 shadow-sm"
         >
-          + Masukkan Keranjang
+          <span className="material-symbols-outlined" aria-hidden>add_shopping_cart</span> Masukkan Keranjang
         </button>
       ) : (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between gap-2 bg-red-50 border-2 border-[#CE1126]/30 rounded-xl p-2">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-2 bg-primary-container/30 border border-primary/20 rounded-full p-2">
             <button
               onClick={() => decrement(product.id_produk)}
               aria-label={`Kurangi ${product.nama_produk}`}
-              className="w-14 h-14 bg-white border border-slate-200 text-[#CE1126] rounded-lg text-3xl font-bold flex items-center justify-center cursor-pointer"
+              className="w-12 h-12 bg-surface-container-lowest border border-outline-variant text-primary rounded-full text-3xl font-bold flex items-center justify-center cursor-pointer shadow-sm hover:bg-surface-variant transition-colors"
             >
               −
             </button>
-            <span className="text-xl font-extrabold text-slate-900">
+            <span className="text-title-lg font-title-lg font-extrabold text-on-surface">
               {qty} {product.satuan_produk}
             </span>
             <button
               onClick={() => increment(product.id_produk)}
               disabled={qty >= product.stok_tersedia}
               aria-label={`Tambah ${product.nama_produk}`}
-              className="w-14 h-14 bg-[#CE1126] text-white rounded-lg text-3xl font-bold flex items-center justify-center disabled:opacity-40 cursor-pointer"
+              className="w-12 h-12 bg-primary text-on-primary rounded-full text-3xl font-bold flex items-center justify-center disabled:opacity-40 cursor-pointer shadow-sm hover:bg-surface-tint transition-colors"
             >
               +
             </button>
@@ -70,9 +69,9 @@ export default function ProductDetailActions({
 
           <Link
             href="/keranjang"
-            className="w-full min-h-[56px] bg-[#CE1126] hover:bg-[#A50E1E] text-white rounded-xl text-lg font-extrabold flex items-center justify-center gap-2 transition-colors"
+            className="w-full min-h-[56px] bg-primary hover:bg-surface-tint text-on-primary rounded-full text-title-md font-title-md font-extrabold flex items-center justify-center gap-2 transition-colors shadow-sm"
           >
-            <ShoppingCart className="w-5 h-5" /> Lihat Keranjang ({totalItems} barang)
+            <span className="material-symbols-outlined" aria-hidden>shopping_cart</span> Lihat Keranjang ({totalItems} barang)
           </Link>
         </div>
       )}

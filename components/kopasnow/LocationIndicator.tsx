@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocationStore } from "@/store/useLocationStore";
 import { searchAddress, getLocationName, type AddressSuggestion } from "@/utils/helper/geo";
-import { MapPin } from "lucide-react";
 
 const LOCATION_CONSENT_KEY = "kopasnow-izin-lokasi";
 
@@ -143,26 +142,25 @@ export default function LocationIndicator() {
 
   return (
     <div className="relative" ref={containerRef}>
-      <button
-        onClick={() => (isOpen ? setIsOpen(false) : openPanel())}
-        aria-expanded={isOpen}
-        aria-label={hasLocation ? `Lokasi Anda: ${text}. Tekan untuk mengubah` : "Atur lokasi Anda"}
-        className={`flex items-center gap-1.5 min-h-[48px] px-3 rounded-full transition-colors cursor-pointer ${
-          hasLocation
-            ? "bg-surface-container-low text-on-surface hover:bg-surface-container"
-            : "bg-primary/10 text-primary hover:bg-primary/20"
-        }`}
+      <div 
+        onClick={openPanel}
+        className="flex items-center gap-2 cursor-pointer group"
       >
-        <span className="material-symbols-outlined text-[22px] text-primary" aria-hidden>
+        <span className="material-symbols-outlined text-primary" aria-hidden>
           location_on
         </span>
-        <span className="hidden sm:inline text-base font-semibold truncate max-w-[140px]">
-          {text}
-        </span>
-        <span className="material-symbols-outlined text-[18px] text-secondary" aria-hidden>
-          expand_more
-        </span>
-      </button>
+        <div className="flex flex-col">
+          <span className="font-label-sm text-label-sm text-secondary">Lokasi Pengiriman</span>
+          <div className="flex items-center gap-1">
+            <span className="font-label-md text-label-md font-bold truncate max-w-[140px] md:max-w-[200px]">
+              {text}
+            </span>
+            <span className="material-symbols-outlined text-sm transition-transform group-hover:translate-y-0.5" aria-hidden>
+              expand_more
+            </span>
+          </div>
+        </div>
+      </div>
 
       {isOpen && (
         // Mobile: panel dipatok ke tepi layar (fixed, bermargin kiri-kanan) agar
@@ -218,7 +216,7 @@ export default function LocationIndicator() {
                     className="w-full text-left px-4 py-3 min-h-[52px] flex items-center gap-3 text-base text-on-surface hover:bg-surface-container-low cursor-pointer"
                   >
                     <div className="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-primary shrink-0">
-                      <MapPin className="w-4 h-4" />
+                      <span className="material-symbols-outlined text-[16px]" aria-hidden>location_on</span>
                     </div>
                     <span className="flex-1">{item.address}</span>
                   </button>

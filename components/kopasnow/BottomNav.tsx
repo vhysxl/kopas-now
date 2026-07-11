@@ -61,7 +61,7 @@ export default function BottomNav() {
   return (
     <nav
       aria-label="Menu utama"
-      className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 shadow-[0_-2px_10px_rgba(0,0,0,0.06)]"
+      className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-surface-container-lowest border-t border-outline-variant shadow-sm"
     >
       <div className="grid grid-cols-4">
         {NAV_ITEMS.map((item) => {
@@ -71,8 +71,8 @@ export default function BottomNav() {
             <Link
               key={item.href}
               href={item.href}
-              className={`relative flex flex-col items-center justify-center gap-0.5 py-2 min-h-[60px] ${
-                isActive ? "text-[#CE1126]" : "text-slate-500"
+              className={`relative flex flex-col items-center justify-center gap-1 py-2 min-h-[60px] ${
+                isActive ? "text-primary" : "text-secondary"
               }`}
             >
               <span className="relative">
@@ -87,12 +87,12 @@ export default function BottomNav() {
                   {item.icon}
                 </svg>
                 {item.href === "/keranjang" && totalItems > 0 && (
-                  <span className="absolute -top-1.5 -right-2.5 min-w-[20px] h-5 px-1 bg-[#CE1126] text-white text-xs font-bold rounded-full flex items-center justify-center">
+                  <span className="absolute -top-1 -right-2 min-w-[20px] h-5 px-1 bg-error text-on-error text-[10px] font-bold rounded-full flex items-center justify-center">
                     {totalItems}
                   </span>
                 )}
               </span>
-              <span className={`text-xs ${isActive ? "font-bold" : "font-semibold"}`}>
+              <span className={`font-label-sm text-[10px] ${isActive ? "font-bold" : "font-medium"}`}>
                 {item.label}
               </span>
             </Link>

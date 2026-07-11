@@ -1,7 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Package, XCircle } from "lucide-react";
 import { getTransactionDetail } from "@/server/actions/transactions";
 
 type Props = {
@@ -34,16 +33,16 @@ export default async function OrderDetailPage({ params }: Props) {
 
   if (error || !transaction) {
     return (
-      <div className="min-h-screen bg-[#F6F6F6] flex items-center justify-center">
-        <div className="bg-red-50 rounded-2xl border border-red-100 p-8 text-center flex flex-col items-center mt-12">
-          <XCircle className="w-10 h-10 text-red-400 mb-3" />
-          <h1 className="text-xl font-bold text-red-900 mb-2">Pesanan Tidak Ditemukan</h1>
-          <p className="text-slate-400 text-xs mb-4">
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="bg-error-container rounded-xl border border-error/20 p-8 text-center flex flex-col items-center mt-12 shadow-sm">
+          <span className="material-symbols-outlined text-5xl text-error mb-4" aria-hidden>error</span>
+          <h1 className="text-headline-sm font-headline-sm font-bold text-on-error-container mb-2">Pesanan Tidak Ditemukan</h1>
+          <p className="text-on-error-container/70 text-body-md font-body-md mb-6">
             Pesanan yang Anda cari tidak ada atau sudah dihapus.
           </p>
           <Link
             href="/orders"
-            className="inline-block px-4 py-2 bg-[#CE1126] text-white text-xs font-bold rounded-full hover:bg-[#A00E1C] transition-colors"
+            className="inline-block px-6 py-3 bg-primary text-on-primary text-label-md font-label-md font-bold rounded-full hover:bg-surface-tint transition-colors shadow-sm"
           >
             Kembali ke Riwayat
           </Link>
@@ -68,83 +67,74 @@ export default async function OrderDetailPage({ params }: Props) {
   const deliveryType = isPickup ? "Ambil Sendiri" : "Diantar";
 
   return (
-    <div className="min-h-screen bg-[#F6F6F6] py-8 px-4">
-      <div className="max-w-3xl mx-auto">
+    <div className="min-h-screen bg-background py-8 px-5 font-body-md text-on-background">
+      <div className="max-w-screen-md mx-auto">
         {/* Back Button */}
         <Link
           href="/orders"
-          className="inline-flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-[#CE1126] transition-colors mb-6"
+          className="inline-flex items-center gap-2 text-label-md font-label-md font-bold text-secondary hover:text-primary transition-colors mb-6"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={2}
-            stroke="currentColor"
-            className="w-4 h-4"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
+          <span className="material-symbols-outlined text-[20px]" aria-hidden>arrow_back</span>
           Kembali ke Riwayat
         </Link>
 
         {/* Header Card */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-6 mb-4">
-          <div className="flex items-start justify-between mb-4">
+        <div className="bg-surface-container-lowest rounded-xl border border-outline-variant p-6 mb-4 shadow-sm">
+          <div className="flex items-start justify-between mb-5">
             <div>
-              <div className="flex items-center gap-2 mb-1">
-                <p className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">
+              <div className="flex items-center gap-2 mb-1.5">
+                <p className="text-[10px] font-mono text-secondary uppercase tracking-wider">
                   Kode Pesanan
                 </p>
                 <div className="flex items-center gap-1">
-                  <span className="w-1 h-1 rounded-full bg-slate-300"></span>
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                  <span className="w-1 h-1 rounded-full bg-outline-variant"></span>
+                  <p className="text-[10px] font-bold text-secondary uppercase tracking-wider">
                     {deliveryType}
                   </p>
                 </div>
               </div>
-              <p className="text-lg font-black text-[#CE1126] font-mono">
+              <p className="text-headline-sm font-headline-sm font-black text-primary font-mono">
                 {transaction.id_transaksi.split("-")[0].toUpperCase()}
               </p>
             </div>
             <div
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${statusInfo.bgColor} ${statusInfo.color} ${statusInfo.borderColor}`}
+              className={`px-3 py-1.5 rounded-lg text-label-sm font-label-sm font-bold border ${statusInfo.bgColor} ${statusInfo.color} ${statusInfo.borderColor}`}
             >
               {statusInfo.label}
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100">
+          <div className="grid grid-cols-2 gap-4 pt-5 border-t border-outline-variant/30">
             <div>
-              <p className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">
+              <p className="text-[10px] text-secondary uppercase tracking-wider mb-1">
                 Tanggal Pesanan
               </p>
-              <p className="text-sm font-bold text-slate-800">{formattedDate}</p>
-              <p className="text-xs text-slate-500">{formattedTime} WIB</p>
+              <p className="text-label-md font-label-md font-bold text-on-surface">{formattedDate}</p>
+              <p className="text-label-sm font-label-sm text-secondary">{formattedTime} WIB</p>
             </div>
             <div>
-              <p className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">
+              <p className="text-[10px] text-secondary uppercase tracking-wider mb-1">
                 Metode Pembayaran
               </p>
-              <p className="text-sm font-bold text-slate-800">{transaction.metode_pembayaran}</p>
+              <p className="text-label-md font-label-md font-bold text-on-surface">{transaction.metode_pembayaran}</p>
             </div>
           </div>
         </div>
 
         {/* Koperasi Info */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-6 mb-4">
-          <p className="text-[10px] text-slate-400 uppercase tracking-wider mb-2">
+        <div className="bg-surface-container-lowest rounded-xl border border-outline-variant p-6 mb-4 shadow-sm">
+          <p className="text-[10px] text-secondary uppercase tracking-wider mb-3">
             Toko
           </p>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-lg">
-              🏪
+            <div className="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center text-secondary">
+              <span className="material-symbols-outlined">storefront</span>
             </div>
             <div>
-              <p className="text-sm font-bold text-slate-800">
+              <p className="text-label-md font-label-md font-bold text-on-surface">
                 {transaction.kopasnow_koperasi.nama}
               </p>
-              <p className="text-xs text-slate-500">
+              <p className="text-label-sm font-label-sm text-secondary">
                 {transaction.kopasnow_koperasi.kode_koperasi}
               </p>
             </div>
@@ -152,20 +142,20 @@ export default async function OrderDetailPage({ params }: Props) {
         </div>
 
         {/* Items */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-6 mb-4">
-          <p className="text-[10px] text-slate-400 uppercase tracking-wider mb-4">
+        <div className="bg-surface-container-lowest rounded-xl border border-outline-variant p-6 mb-4 shadow-sm">
+          <p className="text-[10px] text-secondary uppercase tracking-wider mb-4">
             Detail Pesanan
           </p>
           <div className="space-y-4">
             {transaction.kopasnow_online_transactions_detail.map((item: any) => (
               <div key={item.id_detail} className="flex items-start gap-3">
                 <div className="flex-1">
-                  <p className="text-sm font-bold text-slate-800 mb-1">{item.nama_produk}</p>
+                  <p className="text-label-md font-label-md font-bold text-on-surface mb-1">{item.nama_produk}</p>
                   <div className="flex items-center justify-between">
-                    <p className="text-xs text-slate-500">
+                    <p className="text-label-sm font-label-sm text-secondary">
                       {item.jumlah} x Rp {item.harga_satuan.toLocaleString("id-ID")}
                     </p>
-                    <p className="text-sm font-bold text-slate-800">
+                    <p className="text-label-md font-label-md font-bold text-on-surface">
                       Rp {item.subtotal.toLocaleString("id-ID")}
                     </p>
                   </div>
@@ -176,26 +166,26 @@ export default async function OrderDetailPage({ params }: Props) {
         </div>
 
         {/* Summary */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-6">
-          <p className="text-[10px] text-slate-400 uppercase tracking-wider mb-4">
+        <div className="bg-surface-container-lowest rounded-xl border border-outline-variant p-6 shadow-sm">
+          <p className="text-[10px] text-secondary uppercase tracking-wider mb-4">
             Ringkasan Pembayaran
           </p>
-          <div className="space-y-2">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <p className="text-sm text-slate-600">Subtotal Produk</p>
-              <p className="text-sm font-bold text-slate-800">
+              <p className="text-label-md font-label-md text-secondary">Subtotal Produk</p>
+              <p className="text-label-md font-label-md font-bold text-on-surface">
                 Rp {transaction.total_pembelian.toLocaleString("id-ID")}
               </p>
             </div>
             <div className="flex items-center justify-between">
-              <p className="text-sm text-slate-600">Ongkos Kirim</p>
-              <p className="text-sm font-bold text-slate-800">
+              <p className="text-label-md font-label-md text-secondary">Ongkos Kirim</p>
+              <p className="text-label-md font-label-md font-bold text-on-surface">
                 Rp {transaction.delivery_fee.toLocaleString("id-ID")}
               </p>
             </div>
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-              <p className="text-sm font-bold text-slate-800">Total Pembayaran</p>
-              <p className="text-lg font-black text-[#CE1126]">
+            <div className="pt-4 border-t border-outline-variant/30 flex items-center justify-between">
+              <p className="text-label-lg font-label-lg font-bold text-on-surface">Total Pembayaran</p>
+              <p className="text-headline-sm font-headline-sm font-black text-primary">
                 Rp {(transaction.total_pembelian + transaction.delivery_fee).toLocaleString("id-ID")}
               </p>
             </div>
