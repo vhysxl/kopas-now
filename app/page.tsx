@@ -354,27 +354,6 @@ export default function Home() {
             </div>
           </section>
 
-          {/* Categories */}
-          <section className="flex flex-col gap-3 mb-10">
-            <h2 className="font-headline-md text-headline-md font-bold">Kategori Pilihan</h2>
-            <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2">
-              {CATEGORIES.map((cat) => {
-                const isActive = activeCategory === cat.key;
-                return (
-                  <button
-                    key={cat.key}
-                    onClick={() => handleCategoryClick(cat.key)}
-                    className="flex flex-col items-center gap-2 min-w-[80px] cursor-pointer group"
-                  >
-                    <div className={`w-16 h-16 rounded-full border border-outline-variant flex items-center justify-center transition-colors ${isActive ? "bg-primary-container/20 border-primary" : "bg-surface-container-low group-hover:bg-primary-container/10"}`}>
-                      <span className={`material-symbols-outlined text-3xl ${isActive ? "text-primary font-bold" : "text-primary"}`}>{cat.icon}</span>
-                    </div>
-                    <span className={`font-label-sm text-label-sm text-center ${isActive ? "text-primary font-bold" : "text-on-surface"}`}>{cat.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
 
           {/* Koperasi Terdekat (Split Layout Peta & Daftar) */}
           <section className="mb-section-gap">
@@ -559,6 +538,28 @@ export default function Home() {
           </section>
 
 
+
+          {/* Categories */}
+          <section className="flex flex-col gap-3 mb-10 mt-6">
+            <h2 className="font-headline-md text-headline-md font-bold text-on-surface">Kategori Pilihan</h2>
+            <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2">
+              {CATEGORIES.map((cat) => {
+                const isActive = activeCategory === cat.key;
+                return (
+                  <button
+                    key={cat.key}
+                    onClick={() => handleCategoryClick(cat.key)}
+                    className="flex flex-col items-center gap-2 min-w-[80px] cursor-pointer group"
+                  >
+                    <div className={`w-16 h-16 rounded-full border border-outline-variant flex items-center justify-center transition-colors ${isActive ? "bg-primary-container/20 border-primary" : "bg-surface-container-low group-hover:bg-primary-container/10"}`}>
+                      <span className={`material-symbols-outlined text-3xl ${isActive ? "text-primary font-bold" : "text-primary"}`}>{cat.icon}</span>
+                    </div>
+                    <span className={`font-label-sm text-label-sm text-center ${isActive ? "text-primary font-bold" : "text-on-surface"}`}>{cat.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
 
           {/* Product Recommendations */}
           <section id="rekomendasi-produk" className="mb-section-gap animate-fade-in">
