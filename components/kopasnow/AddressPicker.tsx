@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { searchAddress, getFullAddress, type AddressSuggestion } from "@/utils/helper/geo";
+import { MapPin } from "lucide-react";
 
 const AddressMap = dynamic(() => import("@/components/kopasnow/AddressMap"), {
   ssr: false,
@@ -168,7 +169,7 @@ export default function AddressPicker({ value, onChange }: AddressPickerProps) {
                   onClick={() => pickSuggestion(item)}
                   className="w-full text-left px-4 py-3 min-h-[52px] text-base text-slate-800 hover:bg-slate-50 border-b border-slate-100 last:border-b-0 flex items-start gap-2 cursor-pointer"
                 >
-                  <span className="text-lg leading-none mt-0.5">📍</span>
+                  <span className="text-slate-400 mt-0.5 shrink-0"><MapPin className="w-5 h-5" /></span>
                   <span className="flex-1">{item.address}</span>
                 </button>
               </li>
@@ -184,7 +185,7 @@ export default function AddressPicker({ value, onChange }: AddressPickerProps) {
         disabled={isLocating}
         className="w-full min-h-[52px] bg-white hover:bg-slate-50 text-slate-800 border-2 border-slate-300 rounded-xl text-base font-bold flex items-center justify-center gap-2 transition-colors disabled:opacity-60 cursor-pointer"
       >
-        <span className="text-xl">📍</span>
+        <span className="text-slate-400 shrink-0"><MapPin className="w-5 h-5" /></span>
         {isLocating ? "Mencari lokasi Anda..." : "Gunakan Lokasi Saya Sekarang"}
       </button>
 

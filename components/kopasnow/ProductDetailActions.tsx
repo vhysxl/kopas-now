@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useAddToCart } from "@/hooks/useAddToCart";
 import CartConflictDialog from "@/components/kopasnow/CartConflictDialog";
 import { useCartStore, cartTotalItems } from "@/store/useCartStore";
+import { ShoppingCart } from "lucide-react";
 import type { KopasnowProduct } from "@/server/actions/getProducts";
 
 interface ProductDetailActionsProps {
@@ -71,7 +72,7 @@ export default function ProductDetailActions({
             href="/keranjang"
             className="w-full min-h-[56px] bg-[#CE1126] hover:bg-[#A50E1E] text-white rounded-xl text-lg font-extrabold flex items-center justify-center gap-2 transition-colors"
           >
-            🛒 Lihat Keranjang ({totalItems} barang)
+            <ShoppingCart className="w-5 h-5" /> Lihat Keranjang ({totalItems} barang)
           </Link>
         </div>
       )}

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getProductById } from "@/server/actions/getProducts";
+import { ShoppingCart, MapPin } from "lucide-react";
 import KoperasiDistance from "@/components/kopasnow/KoperasiDistance";
 import ProductDetailActions from "@/components/kopasnow/ProductDetailActions";
 
@@ -58,9 +59,9 @@ export default async function ProductDetailPage({ params }: PageProps) {
               className="w-full h-full object-cover"
             />
           ) : (
-            <span className="text-8xl" aria-hidden>
-              🛒
-            </span>
+            <div className="w-full h-full bg-slate-100 flex items-center justify-center text-slate-300">
+              <ShoppingCart className="w-16 h-16" />
+            </div>
           )}
         </div>
 
@@ -103,7 +104,9 @@ export default async function ProductDetailPage({ params }: PageProps) {
           <h3 className="text-base font-bold text-slate-900">Dijual oleh</h3>
           <p className="text-lg font-bold text-slate-900 mt-1">{product.koperasi.nama}</p>
           {product.koperasi.alamat && (
-            <p className="text-base text-slate-600 mt-1">📍 {product.koperasi.alamat}</p>
+            <p className="text-base text-slate-600 mt-1 flex items-center gap-1">
+              <MapPin className="w-4 h-4 shrink-0" /> {product.koperasi.alamat}
+            </p>
           )}
           <div className="mt-2">
             <KoperasiDistance lat={product.koperasi.lat} lng={product.koperasi.lng} />

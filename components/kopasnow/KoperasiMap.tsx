@@ -5,7 +5,9 @@ import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents, Circle } 
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { KoperasiLocation } from "@/utils/helper/geo";
-import { haversineDistance, formatWalkTime } from "@/utils/helper/geo";
+import Link from "next/link";
+import { formatDistance, haversineDistance, formatWalkTime } from "@/utils/helper/geo";
+import { MapPin } from "lucide-react";
 
 // ── Custom marker icons ──────────────────────────────────────
 
@@ -171,7 +173,7 @@ function ClickToPickPoint({ onPick }: { onPick: (lat: number, lng: number) => vo
 interface KoperasiMapProps {
   koperasiList: KoperasiLocation[];
   userPosition: [number, number] | null;
-  /** Label untuk marker posisi: "📍 Anda di sini" (GPS) atau "📍 Pusat pencarian: <kota>" (kota diketik manual) */
+  /** Label untuk marker posisi: "Anda di sini" (GPS) atau "Pusat pencarian: <kota>" (kota diketik manual) */
   positionLabel?: string;
   /** Radius pencarian dalam km — digambar sebagai lingkaran di sekitar titik acuan */
   radiusKm?: number;
@@ -190,7 +192,7 @@ interface KoperasiMapProps {
 export default function KoperasiMap({
   koperasiList,
   userPosition,
-  positionLabel = "📍 Anda di sini",
+  positionLabel = "Anda di sini",
   radiusKm,
   selectedId = null,
   onSelectKoperasi,
@@ -304,7 +306,9 @@ export default function KoperasiMap({
                     {koperasi.nama}
                   </p>
                   {koperasi.alamat && (
-                    <p className="text-sm text-slate-600">📍 {koperasi.alamat}</p>
+                    <p className="text-sm text-slate-600 flex items-start gap-1 mt-1">
+                      <MapPin className="w-4 h-4 shrink-0 mt-0.5" /> {koperasi.alamat}
+                    </p>
                   )}
                   {distance !== null && (
                     <p className="text-sm font-semibold text-slate-700">

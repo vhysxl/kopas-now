@@ -229,9 +229,8 @@ export async function createTransaction(
       alamatPengiriman = `POINT(${params.delivery_lng} ${params.delivery_lat})`;
     }
 
-    // Pembayaran tunai/COD tidak perlu menunggu pembayaran, jadi pesanan
-    // langsung masuk tahap penyiapan ("Siap"). Metode lain menunggu dulu.
-    const initialStatus = params.payment_method === "COD" ? "Siap" : "Menunggu";
+    // Set status awal selalu "Menunggu" sesuai instruksi
+    const initialStatus = "Menunggu";
 
     // Create the header transaction record
     const { data: transaction, error: transactionError } = await supabase

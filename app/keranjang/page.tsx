@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ShoppingCart } from "lucide-react";
 import Link from "next/link";
 import { useUserStore } from "@/store/useUserStore";
 import { useCartStore, cartTotalItems, cartTotalPrice } from "@/store/useCartStore";
@@ -34,6 +35,7 @@ export default function KeranjangPage() {
 
   // "Ambil sendiri" jadi pilihan awal karena tidak butuh alamat (paling aman)
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("pickup");
+  const [paymentMethod, setPaymentMethod] = useState<"COD" | "TRANSFER">("COD");
   const [address, setAddress] = useState<AddressValue>({ address: "", lat: null, lng: null });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -109,7 +111,7 @@ export default function KeranjangPage() {
       customer_id: user.id,
       koperasi_id: koperasiId,
       total_amount: totalPrice,
-      payment_method: "COD",
+      payment_method: paymentMethod,
       tipe_pembelian: "online",
       delivery_lat: isDelivery ? address.lat ?? undefined : undefined,
       delivery_lng: isDelivery ? address.lng ?? undefined : undefined,
@@ -239,7 +241,7 @@ export default function KeranjangPage() {
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={item.photoUrl} alt={item.name} className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-2xl" aria-hidden>🛒</span>
+                      <ShoppingCart className="w-10 h-10 text-slate-300" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -363,17 +365,49 @@ export default function KeranjangPage() {
               )}
             </div>
 
-            {/* Cara bayar (tunai saat terima — paling dikenal) */}
+            {/* Cara bayar */}
             <div>
               <h2 className="text-lg font-bold text-slate-900 mb-3">Cara bayar</h2>
-              <div className="bg-white rounded-2xl border-2 border-slate-200 p-4 flex items-center gap-3">
-                <span className="text-3xl">💵</span>
-                <div>
-                  <p className="text-base font-bold text-slate-900">Bayar Tunai</p>
-                  <p className="text-sm text-slate-600">
-                    Bayar dengan uang pas saat barang diterima. Tidak perlu transfer.
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  onClick={() => setPaymentMethod("COD")}
+                  className={`text-left p-4 rounded-2xl border-2 transition-colors cursor-pointer ${
+                    paymentMethod === "COD"
+                      ? "border-[#CE1126] bg-red-50"
+                      : "border-slate-200 bg-white hover:border-slate-300"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-3xl">💵</span>
+                    {paymentMethod === "COD" && (
+                      <span className="w-6 h-6 bg-[#CE1126] text-white rounded-full flex items-center justify-center text-sm font-bold">✓</span>
+                    )}
+                  </div>
+                  <p className="text-base font-bold text-slate-900 mt-2">Bayar Tunai (COD)</p>
+                  <p className="text-sm text-slate-600 mt-0.5">
+                    Bayar saat barang diterima.
                   </p>
-                </div>
+                </button>
+
+                <button
+                  onClick={() => setPaymentMethod("TRANSFER")}
+                  className={`text-left p-4 rounded-2xl border-2 transition-colors cursor-pointer ${
+                    paymentMethod === "TRANSFER"
+                      ? "border-[#CE1126] bg-red-50"
+                      : "border-slate-200 bg-white hover:border-slate-300"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-3xl">🏦</span>
+                    {paymentMethod === "TRANSFER" && (
+                      <span className="w-6 h-6 bg-[#CE1126] text-white rounded-full flex items-center justify-center text-sm font-bold">✓</span>
+                    )}
+                  </div>
+                  <p className="text-base font-bold text-slate-900 mt-2">Transfer Bank</p>
+                  <p className="text-sm text-slate-600 mt-0.5">
+                    Transfer ke rekening koperasi.
+                  </p>
+                </button>
               </div>
             </div>
 

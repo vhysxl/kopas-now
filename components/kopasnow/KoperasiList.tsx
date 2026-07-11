@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { MapPin } from "lucide-react";
 import type { KoperasiLocation } from "@/utils/helper/geo";
 import { formatDistance, formatWalkTime } from "@/utils/helper/geo";
 import type { KopasnowProduct } from "@/server/actions/getProducts";
@@ -88,7 +89,9 @@ export default function KoperasiList({
             )}
 
             {koperasi.alamat && (
-              <p className="text-base text-slate-600 mt-1.5">📍 {koperasi.alamat}</p>
+              <p className="text-base text-slate-600 mt-1.5 flex items-center gap-1">
+                <MapPin className="w-4 h-4 shrink-0" /> {koperasi.alamat}
+              </p>
             )}
 
             {displayProducts.length > 0 && (

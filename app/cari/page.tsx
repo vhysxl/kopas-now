@@ -4,6 +4,7 @@ import SearchResults from "@/components/kopasnow/SearchResults";
 import BottomNav from "@/components/kopasnow/BottomNav";
 import LocationIndicator from "@/components/kopasnow/LocationIndicator";
 import NotificationBell from "@/components/kopasnow/NotificationBell";
+import { Search } from "lucide-react";
 
 type Tab = "semua" | "koperasi" | "produk";
 
@@ -54,8 +55,8 @@ export default async function SearchPage({ searchParams }: PageProps) {
             <SearchResults query={query} initialTab={tab} />
           </>
         ) : (
-          <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center">
-            <div className="text-5xl mb-3">🔍</div>
+          <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center flex flex-col items-center">
+            <Search className="w-16 h-16 text-slate-300 mb-4" />
             <p className="text-lg font-bold text-slate-900">Mau cari apa?</p>
             <p className="text-base text-slate-600 mt-1">
               Tulis nama barang atau nama koperasi di kotak pencarian di atas.

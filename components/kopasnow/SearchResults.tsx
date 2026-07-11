@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Search, MapPin, ShoppingCart } from "lucide-react";
 import { getKoperasiList } from "@/server/actions/getKoperasi";
 import { getAllActiveProducts, type KopasnowProduct } from "@/server/actions/getProducts";
 import { useLocationStore } from "@/store/useLocationStore";
@@ -139,10 +140,10 @@ export default function SearchResults({ query, initialTab }: SearchResultsProps)
       </div>
 
       {nothingFound ? (
-        <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center">
-          <div className="text-5xl mb-3">🔍</div>
-          <p className="text-lg font-bold text-slate-900">
-            Tidak ada hasil untuk &quot;{query}&quot;
+        <div className="bg-white border border-slate-100 rounded-2xl p-10 text-center flex flex-col items-center">
+          <Search className="w-16 h-16 text-slate-300 mb-4" />
+          <p className="text-xl font-bold text-slate-800 mb-2">
+            Pencarian &quot;{query}&quot; tidak ditemukan
           </p>
           <p className="text-base text-slate-600 mt-1">
             Coba tulis kata lain, contoh: beras, minyak, atau gula.
@@ -184,8 +185,8 @@ export default function SearchResults({ query, initialTab }: SearchResultsProps)
                         <h3 className="text-base font-bold text-slate-900 line-clamp-1">
                           {k.nama}
                         </h3>
-                        <p className="text-base text-slate-600 line-clamp-1 mt-0.5">
-                          📍 {k.alamat || "Alamat belum dicatat"}
+                        <p className="text-sm text-slate-500 mt-2 line-clamp-1 flex items-center gap-1">
+                          <MapPin className="w-4 h-4" /> {k.alamat || "Alamat belum dicatat"}
                         </p>
                         <p className="text-base text-slate-700 font-semibold mt-1">
                           {distance !== null ? formatDistance(distance) : "Jarak tidak diketahui"}
@@ -224,7 +225,9 @@ export default function SearchResults({ query, initialTab }: SearchResultsProps)
                             loading="lazy"
                           />
                         ) : (
-                          <span className="text-5xl" aria-hidden>🛒</span>
+                          <div className="w-full h-full flex items-center justify-center">
+                          <ShoppingCart className="w-12 h-12 text-slate-300" />
+                        </div>
                         )}
                       </div>
                       <div className="p-3 flex flex-col flex-1">

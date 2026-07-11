@@ -329,7 +329,7 @@ export default function Home() {
                   const target = document.getElementById("rekomendasi-produk");
                   target?.scrollIntoView({ behavior: "smooth" });
                 }}
-                className="bg-surface-container-lowest text-primary hover:bg-surface font-label-lg px-8 py-3 rounded-full transition-colors shadow-sm text-sm font-bold animate-pulse-dot"
+                className="bg-surface-container-lowest text-primary hover:bg-surface font-label-lg px-8 py-3 rounded-full transition-all hover:scale-105 active:scale-95 shadow-sm text-sm font-bold"
               >
                 Belanja Sekarang
               </button>
@@ -406,10 +406,10 @@ export default function Home() {
                     userPosition={effectiveLocation}
                     positionLabel={
                       isViewingOtherCity && locationLabel
-                        ? `📍 Pusat pencarian: ${locationLabel}`
+                        ? `Pusat pencarian: ${locationLabel}`
                         : locationSource === "manual"
-                        ? "📍 Titik yang Anda tandai"
-                        : "📍 Anda di sini"
+                        ? "Titik yang Anda tandai"
+                        : "Anda di sini"
                     }
                     radiusKm={zoneRadiusKm}
                     selectedId={selectedKoperasiId}
@@ -635,49 +635,23 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="bg-on-surface text-primary-fixed font-label-sm text-label-sm w-full mt-auto">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-stack-lg px-margin-page py-section-gap text-surface-bright max-w-screen-xl mx-auto">
+        <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-8 px-margin-page py-section-gap text-surface-bright max-w-screen-xl mx-auto">
           {/* Brand Info */}
-          <div className="md:col-span-1 flex flex-col gap-4">
-            <span className="font-headline-sm text-headline-sm text-surface-bright flex items-center gap-2">
+          <div className="flex flex-col gap-4 text-center md:text-left">
+            <span className="font-headline-sm text-headline-sm text-surface-bright flex items-center justify-center md:justify-start gap-2">
               <span className="material-symbols-outlined" data-weight="fill">storefront</span>
               KopasNow
             </span>
-            <p className="text-surface-variant text-xs leading-relaxed">
+            <p className="text-surface-variant text-xs leading-relaxed max-w-sm">
               Platform digital untuk Koperasi Indonesia. Memberdayakan ekonomi lokal dengan teknologi modern.
             </p>
-            <div className="flex gap-4 mt-2">
+            <div className="flex justify-center md:justify-start gap-4 mt-2">
               <div className="w-8 h-8 rounded-full bg-surface-variant/20 flex items-center justify-center hover:bg-surface-variant/40 cursor-pointer transition-colors">
                 <span className="material-symbols-outlined text-[18px]">public</span>
               </div>
               <div className="w-8 h-8 rounded-full bg-surface-variant/20 flex items-center justify-center hover:bg-surface-variant/40 cursor-pointer transition-colors">
                 <span className="material-symbols-outlined text-[18px]">share</span>
               </div>
-            </div>
-          </div>
-
-          {/* Links */}
-          <div className="md:col-span-3 grid grid-cols-2 md:grid-cols-3 gap-8">
-            <div className="flex flex-col gap-3">
-              <h4 className="font-headline-sm text-surface-bright mb-2">Perusahaan</h4>
-              <a className="text-surface-variant hover:text-surface-bright transition-all text-xs" href="#">Tentang Kami</a>
-              <a className="text-surface-variant hover:text-surface-bright transition-all text-xs" href="#">Karir</a>
-              <a className="text-surface-variant hover:text-surface-bright transition-all text-xs" href="#">Blog</a>
-            </div>
-            <div className="flex flex-col gap-3">
-              <h4 className="font-headline-sm text-surface-bright mb-2">Bantuan</h4>
-              <a className="text-surface-variant hover:text-surface-bright transition-all text-xs" href="#">Syarat & Ketentuan</a>
-              <a className="text-surface-variant hover:text-surface-bright transition-all text-xs" href="#">Kebijakan Privasi</a>
-              <a className="text-surface-variant hover:text-surface-bright transition-all text-xs" href="#">Hubungi Kami</a>
-            </div>
-            <div className="flex flex-col gap-3 col-span-2 md:col-span-1">
-              <h4 className="font-headline-sm text-surface-bright mb-2">Unduh Aplikasi</h4>
-              <button className="bg-surface-variant/20 border border-surface-variant/30 rounded-lg px-4 py-2 flex items-center gap-2 hover:bg-surface-variant/40 transition-colors text-left w-full cursor-pointer">
-                <span className="material-symbols-outlined">android</span>
-                <div>
-                  <span className="block text-[10px] text-surface-variant">Get it on</span>
-                  <span className="block font-bold text-sm text-white">Google Play</span>
-                </div>
-              </button>
             </div>
           </div>
         </div>

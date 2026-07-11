@@ -113,7 +113,7 @@ CREATE TABLE IF NOT EXISTS "public"."kopasnow_online_transactions_header" (
     "id_pelanggan" "uuid" NOT NULL,
     "id_koperasi" "uuid" NOT NULL,
     "total_pembelian" numeric(12,2) NOT NULL,
-    "metode_pembayaran" "text" DEFAULT 'QRIS'::"text" NOT NULL,
+    "metode_pembayaran" "text" DEFAULT 'COD'::"text" NOT NULL,
     "status_transaksi" "text" DEFAULT 'pending'::"text" NOT NULL,
     "alamat_pengiriman" "extensions"."geography"(Point,4326),
     "delivery_fee" numeric(12,2) DEFAULT 0 NOT NULL,
@@ -123,7 +123,7 @@ CREATE TABLE IF NOT EXISTS "public"."kopasnow_online_transactions_header" (
     "completed_at" timestamp with time zone,
     "tipe_pembelian" "text" NOT NULL,
     CONSTRAINT "kopasnow_online_transactions_delivery_fee_check" CHECK (("delivery_fee" >= (0)::numeric)),
-    CONSTRAINT "kopasnow_online_transactions_metode_pembayaran_check" CHECK (("metode_pembayaran" = ANY (ARRAY['QRIS'::"text", 'COD'::"text", 'TRANSFER'::"text"]))),
+    CONSTRAINT "kopasnow_online_transactions_metode_pembayaran_check" CHECK (("metode_pembayaran" = ANY (ARRAY['COD'::"text", 'TRANSFER'::"text"]))),
     CONSTRAINT "kopasnow_online_transactions_status_transaksi_check" CHECK (("status_transaksi" = ANY (ARRAY['pending'::"text", 'paid'::"text", 'processing'::"text", 'shipped'::"text", 'completed'::"text", 'cancelled'::"text"]))),
     CONSTRAINT "kopasnow_online_transactions_total_pembelian_check" CHECK (("total_pembelian" >= (0)::numeric))
 );

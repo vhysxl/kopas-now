@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { Package, XCircle } from "lucide-react";
 import { getTransactionDetail } from "@/server/actions/transactions";
 
 type Props = {
@@ -10,7 +11,7 @@ type Props = {
 const statusConfig: Record<string, { label: string; color: string; bgColor: string; borderColor: string }> = {
   Menunggu: { label: "Menunggu", color: "text-amber-700", bgColor: "bg-amber-50", borderColor: "border-amber-200" },
   Dibayar: { label: "Dibayar", color: "text-blue-700", bgColor: "bg-blue-50", borderColor: "border-blue-200" },
-  Siap: { label: "Siap Dikirim", color: "text-purple-700", bgColor: "bg-purple-50", borderColor: "border-purple-200" },
+  Siap: { label: "Siap Diambil", color: "text-purple-700", bgColor: "bg-purple-50", borderColor: "border-purple-200" },
   Dikirim: { label: "Dikirim", color: "text-cyan-700", bgColor: "bg-cyan-50", borderColor: "border-cyan-200" },
   Diterima: { label: "Diterima", color: "text-teal-700", bgColor: "bg-teal-50", borderColor: "border-teal-200" },
   Selesai: { label: "Selesai", color: "text-emerald-700", bgColor: "bg-emerald-50", borderColor: "border-emerald-200" },
@@ -34,9 +35,9 @@ export default async function OrderDetailPage({ params }: Props) {
   if (error || !transaction) {
     return (
       <div className="min-h-screen bg-[#F6F6F6] flex items-center justify-center">
-        <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center max-w-md">
-          <div className="text-slate-400 text-sm mb-2">❌</div>
-          <p className="text-slate-600 text-sm font-medium mb-1">Pesanan Tidak Ditemukan</p>
+        <div className="bg-red-50 rounded-2xl border border-red-100 p-8 text-center flex flex-col items-center mt-12">
+          <XCircle className="w-10 h-10 text-red-400 mb-3" />
+          <h1 className="text-xl font-bold text-red-900 mb-2">Pesanan Tidak Ditemukan</h1>
           <p className="text-slate-400 text-xs mb-4">
             Pesanan yang Anda cari tidak ada atau sudah dihapus.
           </p>
@@ -63,6 +64,9 @@ export default async function OrderDetailPage({ params }: Props) {
     minute: "2-digit",
   });
 
+  const isPickup = transaction.notes?.includes("Diambil");
+  const deliveryType = isPickup ? "Ambil Sendiri" : "Diantar";
+
   return (
     <div className="min-h-screen bg-[#F6F6F6] py-8 px-4">
       <div className="max-w-3xl mx-auto">
@@ -88,9 +92,17 @@ export default async function OrderDetailPage({ params }: Props) {
         <div className="bg-white rounded-2xl border border-slate-100 p-6 mb-4">
           <div className="flex items-start justify-between mb-4">
             <div>
-              <p className="text-[10px] font-mono text-slate-400 uppercase tracking-wider mb-1">
-                Kode Resi
-              </p>
+              <div className="flex items-center gap-2 mb-1">
+                <p className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">
+                  Kode Pesanan
+                </p>
+                <div className="flex items-center gap-1">
+                  <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                    {deliveryType}
+                  </p>
+                </div>
+              </div>
               <p className="text-lg font-black text-[#CE1126] font-mono">
                 {transaction.id_transaksi.split("-")[0].toUpperCase()}
               </p>
@@ -147,9 +159,6 @@ export default async function OrderDetailPage({ params }: Props) {
           <div className="space-y-4">
             {transaction.kopasnow_online_transactions_detail.map((item: any) => (
               <div key={item.id_detail} className="flex items-start gap-3">
-                <div className="w-16 h-16 rounded-xl bg-slate-100 flex items-center justify-center text-2xl flex-shrink-0">
-                  📦
-                </div>
                 <div className="flex-1">
                   <p className="text-sm font-bold text-slate-800 mb-1">{item.nama_produk}</p>
                   <div className="flex items-center justify-between">

@@ -3,6 +3,7 @@ import { createClient } from "@/utils/supabase/server";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { cookies } from "next/headers";
 import Link from "next/link";
+import { Package, XCircle } from "lucide-react";
 import { getUserTransactions } from "@/server/actions/transactions";
 import OrdersList from "@/components/kopasnow/OrdersList";
 import BottomNav from "@/components/kopasnow/BottomNav";
@@ -52,8 +53,8 @@ export default async function OrdersPage() {
             </svg>
             Kembali ke Beranda
           </Link>
-          <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center">
-            <div className="text-4xl mb-3">📦</div>
+          <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center flex flex-col items-center">
+            <Package className="w-12 h-12 text-slate-300 mb-3" />
             <h1 className="text-xl font-bold mb-2">Belum Ada Pesanan</h1>
             <p className="text-slate-500 text-sm mb-4">
               Anda belum memiliki riwayat pemesanan. Mulai belanja sekarang!
@@ -97,9 +98,9 @@ export default async function OrdersPage() {
             </svg>
             Kembali ke Beranda
           </Link>
-          <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center">
-            <div className="text-4xl mb-3">❌</div>
-            <h1 className="text-xl font-bold mb-2">Riwayat Pemesanan</h1>
+          <div className="bg-red-50 border border-red-100 rounded-2xl p-8 text-center flex flex-col items-center">
+            <XCircle className="w-12 h-12 text-red-400 mb-3" />
+            <h1 className="text-xl font-bold text-red-900 mb-2">Gagal Memuat Pesanan</h1>
             <p className="text-red-600 text-sm">{error || "Gagal memuat riwayat pemesanan."}</p>
           </div>
         </div>
@@ -131,6 +132,7 @@ export default async function OrdersPage() {
         </div>
         <div className="bg-white rounded-2xl border border-slate-100 p-6">
           <h1 className="text-2xl font-bold mb-6">Pesanan Saya</h1>
+          
           <OrdersList transactions={transactions || []} />
         </div>
       </div>

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocationStore } from "@/store/useLocationStore";
 import { searchAddress, getLocationName, type AddressSuggestion } from "@/utils/helper/geo";
+import { MapPin } from "lucide-react";
 
 const LOCATION_CONSENT_KEY = "kopasnow-izin-lokasi";
 
@@ -169,6 +170,13 @@ export default function LocationIndicator() {
         // sm ke atas: kembali menempel di bawah tombol (absolute, rata kanan).
         <div className="fixed left-3 right-3 top-[4.5rem] w-auto sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-[min(92vw,24rem)] bg-surface-container-lowest border-2 border-outline-variant rounded-xl shadow-lg z-50 overflow-hidden">
           <div className="p-4 border-b border-surface-variant">
+            <div className="sm:hidden flex items-center gap-2 mb-3 bg-surface-container-low px-3 py-2 rounded-lg border border-surface-variant">
+              <span className="material-symbols-outlined text-primary text-[20px]">location_on</span>
+              <div className="flex flex-col overflow-hidden">
+                <span className="text-xs text-secondary font-medium">Lokasi Anda</span>
+                <span className="text-sm font-bold text-on-surface truncate">{text}</span>
+              </div>
+            </div>
             <h2 className="text-base font-bold text-on-surface mb-1">Di mana lokasi Anda?</h2>
             <p className="text-base text-secondary mb-3">
               Supaya kami bisa menunjukkan koperasi terdekat.
@@ -207,11 +215,11 @@ export default function LocationIndicator() {
                 <li key={`${item.lat}-${item.lng}-${idx}`}>
                   <button
                     onClick={() => pickSuggestion(item)}
-                    className="w-full text-left px-4 py-3 min-h-[52px] flex items-start gap-2 text-base text-on-surface hover:bg-surface-container-low cursor-pointer"
+                    className="w-full text-left px-4 py-3 min-h-[52px] flex items-center gap-3 text-base text-on-surface hover:bg-surface-container-low cursor-pointer"
                   >
-                    <span className="text-lg leading-none mt-0.5" aria-hidden>
-                      📍
-                    </span>
+                    <div className="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-primary shrink-0">
+                      <MapPin className="w-4 h-4" />
+                    </div>
                     <span className="flex-1">{item.address}</span>
                   </button>
                 </li>

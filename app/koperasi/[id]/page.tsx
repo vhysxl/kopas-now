@@ -5,6 +5,7 @@ import { getProductsByKoperasiId } from "@/server/actions/getProducts";
 import ProductCatalog from "@/components/kopasnow/ProductCatalog";
 import KoperasiDistance from "@/components/kopasnow/KoperasiDistance";
 import { koperasiImage } from "@/utils/helper/koperasiImage";
+import { MapPin } from "lucide-react";
 
 interface PageProps {
   params: Promise<{
@@ -86,7 +87,9 @@ export default async function KoperasiCatalogPage({ params }: PageProps) {
             </h2>
 
             {koperasi.alamat && (
-              <p className="text-base text-slate-600 mt-2">📍 {koperasi.alamat}</p>
+              <p className="text-base text-slate-600 mt-2 flex items-center gap-1">
+                <MapPin className="w-4 h-4 shrink-0" /> {koperasi.alamat}
+              </p>
             )}
 
             <div className="mt-2">
@@ -100,7 +103,7 @@ export default async function KoperasiCatalogPage({ params }: PageProps) {
               </div>
               <div>
                 <dt className="text-sm text-slate-500">Cara bayar</dt>
-                <dd className="text-lg font-bold text-slate-900">Tunai di tempat</dd>
+                <dd className="text-lg font-bold text-slate-900">Transfer & COD</dd>
               </div>
             </dl>
           </div>
