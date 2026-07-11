@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 interface Message {
@@ -88,21 +87,21 @@ export default function ChatBotWidget() {
             {!isOpen && (
                 <button
                     onClick={() => setIsOpen(true)}
-                    className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-[#CE1126] hover:bg-[#A50E1E] text-white rounded-full shadow-lg transition-all hover:scale-110 active:scale-95 flex items-center justify-center"
+                    className="fixed bottom-24 md:bottom-6 right-5 z-50 w-14 h-14 bg-primary hover:bg-surface-tint text-on-primary rounded-full shadow-lg transition-all hover:scale-110 active:scale-95 flex items-center justify-center"
                     aria-label="Buka chat"
                 >
-                    <MessageCircle className="w-6 h-6" />
+                    <span className="material-symbols-outlined text-[24px]">chat</span>
                 </button>
             )}
 
             {/* Chat Popup */}
             {isOpen && (
-                <div className="fixed bottom-6 right-6 z-50 w-[calc(100vw-3rem)] max-w-md h-[600px] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden">
+                <div className="fixed bottom-24 md:bottom-6 right-5 z-50 w-[calc(100vw-2.5rem)] max-w-md h-[min(600px,calc(100vh-8rem))] bg-surface-container-lowest rounded-2xl shadow-2xl border border-outline-variant flex flex-col overflow-hidden">
                     {/* Header */}
-                    <div className="bg-[#CE1126] text-white px-4 py-3 flex items-center justify-between">
+                    <div className="bg-primary text-on-primary px-4 py-3 flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                                <MessageCircle className="w-5 h-5" />
+                                <span className="material-symbols-outlined text-[20px]">chat</span>
                             </div>
                             <div>
                                 <h3 className="font-bold text-base">CS KopasNow</h3>
@@ -114,7 +113,7 @@ export default function ChatBotWidget() {
                             className="w-8 h-8 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
                             aria-label="Tutup chat"
                         >
-                            <X className="w-5 h-5" />
+                            <span className="material-symbols-outlined text-[20px]">close</span>
                         </button>
                     </div>
 
@@ -177,7 +176,7 @@ export default function ChatBotWidget() {
                                 className="w-11 h-11 bg-[#CE1126] hover:bg-[#A50E1E] disabled:bg-slate-300 disabled:cursor-not-allowed text-white rounded-xl flex items-center justify-center transition-colors"
                                 aria-label="Kirim pesan"
                             >
-                                <Send className="w-5 h-5" />
+                                <span className="material-symbols-outlined text-[20px]">send</span>
                             </button>
                         </div>
                     </div>
