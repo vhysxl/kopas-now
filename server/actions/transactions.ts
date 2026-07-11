@@ -85,6 +85,55 @@ async function ensureCustomerExists(userId: string): Promise<string | null> {
   return newCustomer.id;
 }
 
+/**
+ * Kurangi stok produk sesuai jumlah yang dibeli, dijepit minimal 0.
+ *
+ * Dilakukan di aplikasi karena tidak ada trigger di database. Pola baca-lalu-
+ * tulis ini tidak sepenuhnya kebal balapan (dua pembeli bersamaan atas produk
+ * yang sama bisa saling menimpa), tetapi memadai untuk skala pemakaian desa.
+ * Bila nanti dibutuhkan yang atomik, ganti dengan RPC Postgres yang melakukan
+ * `stok_tersedia = greatest(stok_tersedia - qty, 0)` dalam satu perintah.
+ */
+async function decrementStock(items: TransactionItem[]): Promise<void> {
+  try {
+    const adminClient = createAdminClient();
+
+    // Gabungkan jumlah per produk, jaga-jaga bila satu produk muncul dua kali
+    const qtyByProduct = new Map<string, number>();
+    for (const item of items) {
+      qtyByProduct.set(
+        item.product_id,
+        (qtyByProduct.get(item.product_id) ?? 0) + item.quantity
+      );
+    }
+    const ids = [...qtyByProduct.keys()];
+    if (ids.length === 0) return;
+
+    const { data: rows, error } = await adminClient
+      .from("kopasnow_products")
+      .select("id_produk, stok_tersedia")
+      .in("id_produk", ids);
+
+    if (error || !rows) {
+      console.error("Gagal membaca stok untuk pengurangan:", error?.message);
+      return;
+    }
+
+    await Promise.all(
+      rows.map((row) => {
+        const qty = qtyByProduct.get(row.id_produk) ?? 0;
+        const next = Math.max(0, (row.stok_tersedia ?? 0) - qty);
+        return adminClient
+          .from("kopasnow_products")
+          .update({ stok_tersedia: next })
+          .eq("id_produk", row.id_produk);
+      })
+    );
+  } catch (err) {
+    console.error("Gagal mengurangi stok produk:", err);
+  }
+}
+
 /** Nomor WhatsApp pembeli untuk notifikasi; null bila belum tercatat. */
 async function getCustomerPhone(customerId: string): Promise<string | null> {
   const adminClient = createAdminClient();
@@ -180,6 +229,10 @@ export async function createTransaction(
       alamatPengiriman = `POINT(${params.delivery_lng} ${params.delivery_lat})`;
     }
 
+    // Pembayaran tunai/COD tidak perlu menunggu pembayaran, jadi pesanan
+    // langsung masuk tahap penyiapan ("Siap"). Metode lain menunggu dulu.
+    const initialStatus = params.payment_method === "COD" ? "Siap" : "Menunggu";
+
     // Create the header transaction record
     const { data: transaction, error: transactionError } = await supabase
       .from("kopasnow_online_transactions_header")
@@ -188,7 +241,7 @@ export async function createTransaction(
         id_koperasi: params.koperasi_id,
         total_pembelian: params.total_amount,
         metode_pembayaran: params.payment_method,
-        status_transaksi: "pending",
+        status_transaksi: initialStatus,
         alamat_pengiriman: alamatPengiriman,
         delivery_fee: deliveryFee,
         notes: params.notes,
@@ -247,6 +300,11 @@ export async function createTransaction(
   };
   }
 
+    // Kurangi stok tiap produk yang dibeli. Tidak ada trigger di database,
+    // jadi dilakukan di sini. Kegagalannya tidak membatalkan pesanan yang
+    // sudah tercatat (stok bisa direkonsiliasi pengurus bila perlu).
+    await decrementStock(params.items);
+
     // Kabari pembeli. Notifikasi tidak pernah menggagalkan pesanan yang
     // sudah tercatat, jadi kegagalannya ditelan di dalam createNotification.
     const totalWithFee = params.total_amount + deliveryFee;
@@ -276,31 +334,40 @@ export async function createTransaction(
   }
 }
 
+/** Enam status pesanan sesuai constraint di database. */
+export type OrderStatus =
+  | "Menunggu"
+  | "Dibayar"
+  | "Siap"
+  | "Dikirim"
+  | "Diterima"
+  | "Selesai";
+
 /** Kalimat yang dipahami pembeli untuk tiap status pesanan. */
-const STATUS_MESSAGE: Record<string, { judul: string; isi: string }> = {
-  pending: {
+const STATUS_MESSAGE: Record<OrderStatus, { judul: string; isi: string }> = {
+  Menunggu: {
     judul: "Pesanan menunggu diproses",
     isi: "Pesanan Anda sudah masuk dan sedang menunggu diproses koperasi.",
   },
-  paid: {
+  Dibayar: {
     judul: "Pembayaran diterima",
     isi: "Pembayaran Anda sudah diterima koperasi. Terima kasih!",
   },
-  processing: {
+  Siap: {
     judul: "Pesanan sedang disiapkan",
     isi: "Pengurus koperasi sedang menyiapkan barang pesanan Anda.",
   },
-  shipped: {
+  Dikirim: {
     judul: "Pesanan sedang diantar",
-    isi: "Kurir koperasi sedang mengantar pesanan Anda ke rumah. Mohon ditunggu.",
+    isi: "Kurir koperasi sedang mengantar pesanan Anda. Mohon ditunggu.",
   },
-  completed: {
+  Diterima: {
+    judul: "Pesanan sudah diterima",
+    isi: "Pesanan Anda sudah sampai. Terima kasih!",
+  },
+  Selesai: {
     judul: "Pesanan selesai",
     isi: "Pesanan Anda sudah selesai. Terima kasih sudah belanja di koperasi desa!",
-  },
-  cancelled: {
-    judul: "Pesanan dibatalkan",
-    isi: "Pesanan Anda dibatalkan. Hubungi pengurus koperasi bila ini tidak sesuai.",
   },
 };
 
@@ -312,7 +379,7 @@ const STATUS_MESSAGE: Record<string, { judul: string; isi: string }> = {
  */
 export async function updateTransactionStatus(
   transaction_id: string,
-  status: "pending" | "paid" | "processing" | "shipped" | "completed" | "cancelled"
+  status: OrderStatus
 ): Promise<TransactionResponse> {
   try {
     const cookieStore = await cookies();
@@ -327,8 +394,8 @@ status_transaksi: status,
       updated_at: new Date().toISOString(),
     };
 
-    // Set completed_at if status is completed
-    if (status === "completed") {
+    // Set completed_at saat pesanan dinyatakan selesai
+    if (status === "Selesai") {
       updateData.completed_at = new Date().toISOString();
     }
 

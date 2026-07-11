@@ -3,16 +3,17 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 
-type TransactionStatus = "pending" | "paid" | "processing" | "shipped" | "completed" | "cancelled";
+// Enam status sesuai constraint di database (kopasnow_online_transactions_header)
+type TransactionStatus = "Menunggu" | "Dibayar" | "Siap" | "Dikirim" | "Diterima" | "Selesai";
 
 /** Urut sesuai perjalanan pesanan, dari kiri ke kanan. */
 const STATUS_FLOW: TransactionStatus[] = [
-  "pending",
-  "paid",
-  "processing",
-  "shipped",
-  "completed",
-  "cancelled",
+  "Menunggu",
+  "Dibayar",
+  "Siap",
+  "Dikirim",
+  "Diterima",
+  "Selesai",
 ];
 
 type StatusFilter = TransactionStatus | "all";
@@ -42,12 +43,12 @@ type OrdersListProps = {
 };
 
 const statusConfig: Record<TransactionStatus, { label: string; tab: string; color: string; bgColor: string; borderColor: string }> = {
-  pending: { label: "Menunggu Pembayaran", tab: "Menunggu", color: "text-amber-700", bgColor: "bg-amber-50", borderColor: "border-amber-100" },
-  paid: { label: "Dibayar", tab: "Dibayar", color: "text-blue-700", bgColor: "bg-blue-50", borderColor: "border-blue-100" },
-  processing: { label: "Diproses", tab: "Diproses", color: "text-purple-700", bgColor: "bg-purple-50", borderColor: "border-purple-100" },
-  shipped: { label: "Dikirim", tab: "Dikirim", color: "text-cyan-700", bgColor: "bg-cyan-50", borderColor: "border-cyan-100" },
-  completed: { label: "Selesai", tab: "Selesai", color: "text-emerald-700", bgColor: "bg-emerald-50", borderColor: "border-emerald-100" },
-  cancelled: { label: "Dibatalkan", tab: "Dibatalkan", color: "text-red-700", bgColor: "bg-red-50", borderColor: "border-red-100" },
+  Menunggu: { label: "Menunggu", tab: "Menunggu", color: "text-amber-700", bgColor: "bg-amber-50", borderColor: "border-amber-100" },
+  Dibayar: { label: "Dibayar", tab: "Dibayar", color: "text-blue-700", bgColor: "bg-blue-50", borderColor: "border-blue-100" },
+  Siap: { label: "Siap Dikirim", tab: "Siap", color: "text-purple-700", bgColor: "bg-purple-50", borderColor: "border-purple-100" },
+  Dikirim: { label: "Dikirim", tab: "Dikirim", color: "text-cyan-700", bgColor: "bg-cyan-50", borderColor: "border-cyan-100" },
+  Diterima: { label: "Diterima", tab: "Diterima", color: "text-teal-700", bgColor: "bg-teal-50", borderColor: "border-teal-100" },
+  Selesai: { label: "Selesai", tab: "Selesai", color: "text-emerald-700", bgColor: "bg-emerald-50", borderColor: "border-emerald-100" },
 };
 
 export default function OrdersList({ transactions }: OrdersListProps) {
@@ -132,7 +133,7 @@ export default function OrdersList({ transactions }: OrdersListProps) {
       ) : (
         <div className="space-y-3">
           {visible.map((transaction) => {
-        const statusInfo = statusConfig[transaction.status_transaksi] || statusConfig.pending;
+        const statusInfo = statusConfig[transaction.status_transaksi] || statusConfig.Menunggu;
         const totalItems = transaction.kopasnow_online_transactions_detail.reduce(
        (sum, item) => sum + item.jumlah,
           0

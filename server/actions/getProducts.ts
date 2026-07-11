@@ -35,9 +35,16 @@ export async function getAllActiveProducts(): Promise<{
     const cookieStore = await cookies();
     const supabase = createClient(cookieStore);
 
+    // foto_url sengaja tidak diikutkan di sini: sebagian baris menyimpan
+    // gambar base64 penuh (~1 MB per baris) langsung di kolom teks, bukan
+    // tautan ke object storage. Mengambilnya untuk seluruh daftar produk
+    // membuat query ini timeout di Postgres. Foto asli tetap tampil di
+    // halaman detail produk lewat getProductById (satu baris saja).
+    // TODO(fase backend): pindahkan gambar ke Supabase Storage, simpan
+    // hanya URL-nya di foto_url, lalu kolom ini bisa diikutkan lagi di sini.
     const { data, error } = await supabase
       .from("kopasnow_products")
-      .select("id_produk, koperasi_id, nama_produk, deskripsi_produk, harga_produk, satuan_produk, stok_tersedia, foto_url, kategori_produk")
+      .select("id_produk, koperasi_id, nama_produk, deskripsi_produk, harga_produk, satuan_produk, stok_tersedia, kategori_produk")
       .eq("is_active", true)
       .order("nama_produk");
 
@@ -46,7 +53,14 @@ export async function getAllActiveProducts(): Promise<{
       return { data: null, error: error.message };
     }
 
-    return { data, error: null };
+    // foto_url tidak diambil di query (lihat catatan di atas) — isi null
+    // dan biarkan UI daftar produk memakai ikon bawaan sebagai gantinya.
+    const withPhoto: KopasnowProduct[] = (data ?? []).map((p) => ({
+      ...p,
+      foto_url: null,
+    }));
+
+    return { data: withPhoto, error: null };
   } catch (err) {
     console.error("Unexpected error in getAllActiveProducts:", err);
     return { data: null, error: "Gagal memuat data produk" };
@@ -123,9 +137,13 @@ export async function getProductsByKoperasiId(koperasiId: string): Promise<{
     const cookieStore = await cookies();
     const supabase = createClient(cookieStore);
 
+    // foto_url dikecualikan — sama seperti getAllActiveProducts, sebagian
+    // baris menyimpan gambar base64 ~1 MB langsung di kolom teks sehingga
+    // rawan memperlambat/timeout katalog koperasi yang kebetulan menjual
+    // produk tersebut. Foto asli tetap tampil di halaman detail produk.
     const { data, error } = await supabase
       .from("kopasnow_products")
-      .select("id_produk, koperasi_id, nama_produk, deskripsi_produk, harga_produk, satuan_produk, stok_tersedia, foto_url, kategori_produk")
+      .select("id_produk, koperasi_id, nama_produk, deskripsi_produk, harga_produk, satuan_produk, stok_tersedia, kategori_produk")
       .eq("koperasi_id", koperasiId)
       .eq("is_active", true)
       .order("nama_produk");
@@ -135,7 +153,12 @@ export async function getProductsByKoperasiId(koperasiId: string): Promise<{
       return { data: null, error: error.message };
     }
 
-    return { data, error: null };
+    const withPhoto: KopasnowProduct[] = (data ?? []).map((p) => ({
+      ...p,
+      foto_url: null,
+    }));
+
+    return { data: withPhoto, error: null };
   } catch (err) {
     console.error(`Unexpected error in getProductsByKoperasiId for ${koperasiId}:`, err);
     return { data: null, error: "Gagal memuat data produk koperasi" };

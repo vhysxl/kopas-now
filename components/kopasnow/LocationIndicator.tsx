@@ -164,7 +164,10 @@ export default function LocationIndicator() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-[min(92vw,24rem)] bg-surface-container-lowest border-2 border-outline-variant rounded-xl shadow-lg z-50 overflow-hidden">
+        // Mobile: panel dipatok ke tepi layar (fixed, bermargin kiri-kanan) agar
+        // tidak meluber keluar layar saat tombolnya ada di tengah barisan navbar.
+        // sm ke atas: kembali menempel di bawah tombol (absolute, rata kanan).
+        <div className="fixed left-3 right-3 top-[4.5rem] w-auto sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-[min(92vw,24rem)] bg-surface-container-lowest border-2 border-outline-variant rounded-xl shadow-lg z-50 overflow-hidden">
           <div className="p-4 border-b border-surface-variant">
             <h2 className="text-base font-bold text-on-surface mb-1">Di mana lokasi Anda?</h2>
             <p className="text-base text-secondary mb-3">
@@ -224,7 +227,7 @@ export default function LocationIndicator() {
             <span className="material-symbols-outlined text-[20px]" aria-hidden>
               my_location
             </span>
-            {isLocating ? "Mencari lokasi Anda..." : "Pakai Lokasi HP Saya"}
+            {isLocating ? "Mencari lokasi Anda..." : "Lokasi Saya Sekarang"}
           </button>
 
           <p className="px-4 py-3 text-sm text-secondary bg-surface-container-low border-t border-surface-variant">

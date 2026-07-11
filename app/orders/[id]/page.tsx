@@ -8,12 +8,12 @@ type Props = {
 };
 
 const statusConfig: Record<string, { label: string; color: string; bgColor: string; borderColor: string }> = {
-  pending: { label: "Menunggu Pembayaran", color: "text-amber-700", bgColor: "bg-amber-50", borderColor: "border-amber-200" },
-  paid: { label: "Dibayar", color: "text-blue-700", bgColor: "bg-blue-50", borderColor: "border-blue-200" },
-  processing: { label: "Diproses", color: "text-purple-700", bgColor: "bg-purple-50", borderColor: "border-purple-200" },
-  shipped: { label: "Dikirim", color: "text-cyan-700", bgColor: "bg-cyan-50", borderColor: "border-cyan-200" },
-  completed: { label: "Selesai", color: "text-emerald-700", bgColor: "bg-emerald-50", borderColor: "border-emerald-200" },
-  cancelled: { label: "Dibatalkan", color: "text-red-700", bgColor: "bg-red-50", borderColor: "border-red-200" },
+  Menunggu: { label: "Menunggu", color: "text-amber-700", bgColor: "bg-amber-50", borderColor: "border-amber-200" },
+  Dibayar: { label: "Dibayar", color: "text-blue-700", bgColor: "bg-blue-50", borderColor: "border-blue-200" },
+  Siap: { label: "Siap Dikirim", color: "text-purple-700", bgColor: "bg-purple-50", borderColor: "border-purple-200" },
+  Dikirim: { label: "Dikirim", color: "text-cyan-700", bgColor: "bg-cyan-50", borderColor: "border-cyan-200" },
+  Diterima: { label: "Diterima", color: "text-teal-700", bgColor: "bg-teal-50", borderColor: "border-teal-200" },
+  Selesai: { label: "Selesai", color: "text-emerald-700", bgColor: "bg-emerald-50", borderColor: "border-emerald-200" },
 };
 
 export default async function OrderDetailPage({ params }: Props) {
@@ -51,7 +51,7 @@ export default async function OrderDetailPage({ params }: Props) {
     );
   }
 
-  const statusInfo = statusConfig[transaction.status_transaksi] || statusConfig.pending;
+  const statusInfo = statusConfig[transaction.status_transaksi] || statusConfig.Menunggu;
   const orderDate = new Date(transaction.created_at);
   const formattedDate = orderDate.toLocaleDateString("id-ID", {
     day: "numeric",
