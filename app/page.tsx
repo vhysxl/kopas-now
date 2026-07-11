@@ -255,9 +255,7 @@ export default function Home() {
     );
   }
 
-  if (!user) {
-    return null; // Middleware handles redirect
-  }
+
 
   return (
     <div className="bg-background text-on-background font-body-md min-h-screen flex flex-col pb-20 md:pb-0">
@@ -298,15 +296,23 @@ export default function Home() {
               <Link href="/" className="font-label-md text-label-md text-primary font-bold hover:bg-surface-variant transition-colors py-2 px-4 rounded-full">
                 Beranda
               </Link>
-              <Link href="/orders" className="font-label-md text-label-md text-secondary hover:bg-surface-variant transition-colors py-2 px-4 rounded-full">
-                Pesanan
-              </Link>
-              <Link href="/akun" className="font-label-md text-label-md text-secondary hover:bg-surface-variant transition-colors py-2 px-4 rounded-full flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-primary-fixed border border-primary/20 flex items-center justify-center text-xs font-bold text-primary">
-                  {nama.charAt(0).toUpperCase()}
-                </div>
-                Profil
-              </Link>
+              {user ? (
+                <>
+                  <Link href="/orders" className="font-label-md text-label-md text-secondary hover:bg-surface-variant transition-colors py-2 px-4 rounded-full">
+                    Pesanan
+                  </Link>
+                  <Link href="/akun" className="font-label-md text-label-md text-secondary hover:bg-surface-variant transition-colors py-2 px-4 rounded-full flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full bg-primary-fixed border border-primary/20 flex items-center justify-center text-xs font-bold text-primary">
+                      {nama.charAt(0).toUpperCase()}
+                    </div>
+                    Profil
+                  </Link>
+                </>
+              ) : (
+                <Link href="/auth" className="bg-primary text-on-primary font-label-md text-label-md hover:bg-surface-tint transition-colors py-2 px-6 rounded-full ml-2">
+                  Masuk / Daftar
+                </Link>
+              )}
             </div>
           </div>
         </div>
@@ -322,7 +328,11 @@ export default function Home() {
         <main className="flex-1 px-5 py-4 md:px-stack-lg md:py-stack-lg overflow-x-hidden max-w-screen-xl mx-auto w-full">
           {/* Welcome User - Mobile Only */}
           <div className="mb-6 md:hidden">
-            <p className="text-base text-secondary">Halo, <strong>{nama}</strong>!</p>
+            {user ? (
+              <p className="text-base text-secondary">Halo, <strong>{nama}</strong>!</p>
+            ) : (
+              <p className="text-base text-secondary">Halo, <strong>Tamu</strong>!</p>
+            )}
             <h1 className="text-headline-md font-bold text-on-surface mt-1">Mau belanja apa hari ini?</h1>
           </div>
 

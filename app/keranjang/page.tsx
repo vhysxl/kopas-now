@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useUserStore } from "@/store/useUserStore";
 import { useCartStore, cartTotalItems, cartTotalPrice } from "@/store/useCartStore";
 import { createTransaction } from "@/server/actions/transactions";
@@ -22,6 +23,7 @@ type DeliveryMethod = "pickup" | "delivery";
 export default function KeranjangPage() {
   const user = useUserStore((state) => state.user);
   const customer = useUserStore((state) => state.customer);
+  const router = useRouter();
 
   const koperasiId = useCartStore((state) => state.koperasiId);
   const koperasiName = useCartStore((state) => state.koperasiName);
@@ -86,7 +88,11 @@ export default function KeranjangPage() {
   const grandTotal = totalPrice + deliveryFee;
 
   const handleSubmit = async () => {
-    if (!user || !koperasiId || items.length === 0) return;
+    if (!user) {
+      router.push("/auth");
+      return;
+    }
+    if (!koperasiId || items.length === 0) return;
     if (addressIncomplete) {
       setSubmitError(
         addressText.length < 10
@@ -454,15 +460,17 @@ export default function KeranjangPage() {
 
               <button
                 onClick={handleSubmit}
-                disabled={isSubmitting || !user || isOutOfRange}
+                disabled={isSubmitting || (!!user && isOutOfRange) || items.length === 0}
                 className="mt-6 w-full min-h-[56px] bg-primary hover:bg-surface-tint active:bg-primary text-on-primary rounded-full text-title-md font-title-md font-extrabold transition-colors disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer shadow-sm flex items-center justify-center gap-2"
               >
                 {isSubmitting
                   ? "Mengirim pesanan..."
+                  : !user
+                  ? "Masuk untuk Pesan"
                   : isOutOfRange
                   ? "Di Luar Jangkauan Antar"
                   : "Pesan Sekarang"}
-                {!isSubmitting && !isOutOfRange && (
+                {!isSubmitting && (!user || !isOutOfRange) && (
                   <span className="material-symbols-outlined text-[20px]" aria-hidden>send</span>
                 )}
               </button>

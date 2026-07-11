@@ -40,10 +40,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
-  // Redirect unauthenticated user to auth page
-  if (!user && !isAuthPage) {
-    return NextResponse.redirect(new URL("/auth", request.url));
-  }
+
 
   return response;
 }

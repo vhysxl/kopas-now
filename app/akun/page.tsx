@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useUserStore } from "@/store/useUserStore";
 import { signOutAction } from "@/server/actions/auth";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import BottomNav from "@/components/kopasnow/BottomNav";
 import { displayName, displayPhone } from "@/utils/helper/account";
 
@@ -10,6 +12,13 @@ export default function AkunPage() {
   const user = useUserStore((state) => state.user);
   const customer = useUserStore((state) => state.customer);
   const isLoading = useUserStore((state) => state.isLoading);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.replace("/auth");
+    }
+  }, [user, isLoading, router]);
 
   const nama = displayName(user, customer);
   // alamat sintetis <nomor>@phone.kopasnow.com ke pengguna.
@@ -31,7 +40,7 @@ export default function AkunPage() {
   }
 
   if (!user) {
-    return null; // Middleware handles redirect
+    return null;
   }
 
   return (
